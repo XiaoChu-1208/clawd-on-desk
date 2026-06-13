@@ -4,14 +4,16 @@ const core = globalThis.ClawdSettingsCore;
 
 const SIDEBAR_TABS = [
   { id: "general", icon: "\u2699", labelKey: "sidebarGeneral", available: true },
-  { id: "agents", icon: "\u26A1", labelKey: "sidebarAgents", available: true },
+  { id: "agents", icon: "\u26A1", labelKey: "sidebarAgents", available: false },
   { id: "theme", icon: "\u{1F3A8}", labelKey: "sidebarTheme", available: true },
   { id: "animMap", icon: "\u{1F3AC}", labelKey: "sidebarAnimMap", available: true },
   { id: "animOverrides", icon: "\u{1F39E}", labelKey: "sidebarAnimOverrides", available: true },
   { id: "shortcuts", icon: "\u2328", labelKey: "sidebarShortcuts", available: true },
-  { id: "telegram-approval", icon: "\u2708", labelKey: "sidebarTelegramApproval", available: true },
-  { id: "remote-ssh", icon: "\u{1F50C}", labelKey: "sidebarRemoteSsh", available: true },
-  { id: "mobile", icon: "\u{1F4F1}", labelKey: "sidebarMobile", available: true },
+  // English-coach fork: \u9690\u85cf\u7528\u4e0d\u5230\u7684\u5b50\u7cfb\u7edf\u9762\u677f(Telegram \u8fdc\u7a0b\u5ba1\u6279 / \u8fdc\u7a0b SSH /
+  // \u5d4c\u5728 Telegram \u9762\u677f\u91cc\u7684 hardware-buddy)\u3002\u4ee3\u7801\u4ecd\u5728,\u7ffb\u56de true \u5373\u6062\u590d\u3002
+  { id: "telegram-approval", icon: "\u2708", labelKey: "sidebarTelegramApproval", available: false },
+  { id: "remote-ssh", icon: "\u{1F50C}", labelKey: "sidebarRemoteSsh", available: false },
+  { id: "mobile", icon: "\u{1F4F1}", labelKey: "sidebarMobile", available: false },
   { id: "about", icon: "\u2139", labelKey: "sidebarAbout", available: true },
 ];
 
@@ -26,6 +28,8 @@ function renderSidebar() {
     globalThis.ClawdSettingsDoctorModal.renderSidebarIndicator(sidebar, core);
   }
   for (const tab of SIDEBAR_TABS) {
+    // English-coach fork: 不可用的 tab 直接不渲染——连灰色的「待推出」占位也不显示。
+    if (!tab.available) continue;
     const item = document.createElement("div");
     item.className = "sidebar-item";
     if (!tab.available) item.classList.add("disabled");

@@ -88,6 +88,8 @@ test("pet interaction IPC registers owned channels and disposes them", () => {
   const { ipcMain, runtime } = createHarness();
 
   assert.deepStrictEqual([...ipcMain.listeners.keys()].sort(), [
+    "coach-poke",
+    "coach-toggle",
     "drag-end",
     "drag-lock",
     "drag-move",
