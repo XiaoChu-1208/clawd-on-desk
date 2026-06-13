@@ -1599,6 +1599,22 @@ const _serverCtx = {
   showSpeechBubble: (payload) => _coachBubble.showSpeechBubble(payload),
   // English-coach fork: 播一段具体动画（持续倾听=headphones-groove）；setState 一变会自动取消它
   playPetReaction: (svg, duration) => sendToRenderer("play-click-reaction", svg, duration),
+  // English-coach fork: Claude 自驱身体 —— 改尺寸（S/M/L）/ 进出 mini（缩到屏幕角落）。
+  // 走和右键菜单同一套路径（_deferredResizePet=_menu.resizeWindow、enterMiniViaMenu/exitMiniMode），
+  // 这些符号在调用时（HTTP /say 进来时）都已初始化，引用安全。
+  petControl: (ctrl) => {
+    try {
+      if (!ctrl || typeof ctrl !== "object") return;
+      if (typeof ctrl.size === "string" && /^[SML]$/.test(ctrl.size)) {
+        _deferredResizePet(ctrl.size);
+      }
+      if (ctrl.mini === true) {
+        if (!disableMiniModeCached && !_mini.getMiniMode()) enterMiniViaMenu();
+      } else if (ctrl.mini === false) {
+        if (_mini.getMiniMode()) exitMiniMode();
+      }
+    } catch (_) {}
+  },
   // English-coach fork: 播内置音效（confirm 噔噔 / complete）
   playSound,
   // English-coach fork: 你的反向气泡（{mode:'prompt'|'live', text} 或 {hide:true}）
@@ -3309,6 +3325,21 @@ function computeFinalDragBounds(bounds, size, clampPosition = clampToScreenVisua
 
 // ── Mini Mode — initialized here after state module ──
 const _miniCtx = {
+  // English-coach fork: 进/出 mini 时通知 coach 引擎(进 mini→引擎隐藏会话;出 mini→清标记)。
+  // 只在 coach 模式下、且引擎控制端口在听时才发;发不出去(没跑引擎)就静默忽略。
+  onMiniChange: (on) => {
+    if (!process.env.CLAWD_COACH_MODE) return;
+    try {
+      const data = JSON.stringify({ on: !!on });
+      const req = require("http").request(
+        { host: "127.0.0.1", port: Number(process.env.COACH_CONTROL_PORT || 23390), path: "/mini", method: "POST", timeout: 1000, headers: { "content-type": "application/json", "content-length": Buffer.byteLength(data) } },
+        (res) => res.resume()
+      );
+      req.on("error", () => {});
+      req.on("timeout", () => { try { req.destroy(); } catch {} });
+      req.write(data); req.end();
+    } catch {}
+  },
   get theme() { return getActiveTheme(); },
   get win() { return win; },
   get currentSize() { return currentSize; },

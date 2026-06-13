@@ -39,8 +39,12 @@ function handleSayPost(req, res, options) {
     const sound = typeof data.sound === "string" ? data.sound : null; // confirm / complete
     const user = data.user && typeof data.user === "object" ? data.user : null; // 你的反向气泡
     const chat = data.chat && typeof data.chat === "object" ? data.chat : null; // 聊天记录栏
+    const control = data.control && typeof data.control === "object" ? data.control : null; // Claude 自驱身体：尺寸 / mini
 
     try {
+      if (control && typeof ctx.petControl === "function") {
+        ctx.petControl(control); // {size:'S'|'M'|'L'} 改尺寸 / {mini:true|false} 进出 mini
+      }
       if (chat && typeof ctx.chatStack === "function") {
         ctx.chatStack(chat);
       }

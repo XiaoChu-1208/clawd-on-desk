@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld("chatStackAPI", {
   submit: (text) => ipcRenderer.send("chat-submit", text), // 回车发送（打字）
   toggleMic: () => ipcRenderer.send("chat-toggle-mic"),     // 暂停按钮 → 开/关录音
   onLock: (cb) => ipcRenderer.on("chat-lock", (_e, locked) => cb(!!locked)),
-  setCapture: (on) => ipcRenderer.send("chat-capture", !!on), // 鼠标在输入框上→捕获，否则点穿
+  setCapture: (on) => ipcRenderer.send("chat-capture", !!on), // 鼠标在可交互区上→捕获，否则点穿
   notifyTyping: (on) => ipcRenderer.send("chat-typing", !!on), // 进入打字模式→引擎停麦
+  openLink: (href) => ipcRenderer.send("chat-open-link", href), // 点对话里的超链接→外部浏览器打开
 });

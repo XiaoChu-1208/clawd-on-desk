@@ -5,7 +5,7 @@
 //   payload.type: clear | add{role,text} | input{text?} | live{text} | endinput | hide
 //   deps.getPetWindowBounds() / getNearestWorkArea(cx,cy) / ipcMain
 
-const { BrowserWindow, ipcMain } = require("electron");
+const { BrowserWindow, ipcMain, shell } = require("electron");
 const path = require("path");
 const http = require("http");
 
@@ -99,6 +99,14 @@ module.exports = function initChatStack(deps = {}) {
     // 固定大框默认点穿（透明区不挡后面 App）；鼠标移到输入框时前端会通知捕获
     try { win.setIgnoreMouseEvents(true, { forward: true }); } catch {}
     win.loadFile(path.join(__dirname, "chat-stack.html"));
+    // 把聊天栏渲染器的 console / 崩溃转到主日志（/tmp/clawd-pet.log），方便定位闪退
+    try {
+      win.webContents.on("console-message", (_e, level, message, line, src) => {
+        if (level >= 2 || /error|crash|chat-stack-renderer/i.test(message)) console.error(`[chat-stack-console] ${message} (${src}:${line})`);
+      });
+      win.webContents.on("render-process-gone", (_e, details) => console.error("[chat-stack] 渲染进程崩溃:", JSON.stringify(details)));
+      win.webContents.on("unresponsive", () => console.error("[chat-stack] 渲染进程无响应"));
+    } catch (_) {}
     win.webContents.once("did-finish-load", () => {
       ready = true;
       pushSide();                       // 初始告知桌宠在哪侧
@@ -150,6 +158,13 @@ module.exports = function initChatStack(deps = {}) {
     req.end();
   }
   ipc.on("chat-typing", onTyping);
+
+  // 点对话里的超链接 → 用系统默认浏览器打开（只放行 http/https）
+  function onOpenLink(_e, href) {
+    const s = String(href || "");
+    if (/^https?:\/\//i.test(s)) { try { Promise.resolve(shell.openExternal(s)).catch(() => {}); } catch {} }
+  }
+  ipc.on("chat-open-link", onOpenLink);
 
   // 暂停按钮 → 打引擎 /toggle，把返回的 paused 回灌给前端驱动锁定视觉
   function onToggleMic() {

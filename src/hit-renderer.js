@@ -75,6 +75,10 @@ function clearQueuedDragMove() {
 area.addEventListener("pointerdown", (e) => {
   if (e.button === 0) {
     if (miniMode) { didDrag = false; return; }
+    // English-coach fork: 按下「立刻」打断 Claude —— 最跟手、最稳固。放在 pointerdown 而非
+    // 松手后的 handleClick：不等松手、不受连击窗口(600ms)影响、不被 7px 拖动阈值误判丢掉。
+    // 引擎只在它正说话时才打断，否则静默忽略；幂等，连按多下也无副作用。
+    try { window.hitAPI.coachPoke && window.hitAPI.coachPoke(); } catch (_) {}
     area.setPointerCapture(e.pointerId);
     isDragging = true;
     didDrag = false;
@@ -185,6 +189,8 @@ function handleClick(clientX) {
     // First click reveals the session HUD. Lightweight side effect — NOT
     // gated by isReacting (HUD reveal is independent of pet animation).
     window.hitAPI.revealSessionHud();
+    // 打断 Claude 已前移到 pointerdown（每次按下都戳一下，最稳、不受连击窗口/拖动阈值影响），
+    // 这里不再重复 coachPoke，避免双触发。
   }
 
   if (clickTimer) { clearTimeout(clickTimer); clickTimer = null; }
@@ -215,9 +221,6 @@ function handleClick(clientX) {
   } else {
     clickTimer = setTimeout(() => {
       clickTimer = null;
-      // English-coach fork: 只在「确认为单击」(等过双击窗口、没第二下) 才打断 Claude。
-      // 这样双击=暂停的第一下不会误触打断，意外的连点也不会。打断会有 ~CLICK_WINDOW_MS 的延迟，可接受。
-      if (clickCount === 1) { try { window.hitAPI.coachPoke && window.hitAPI.coachPoke(); } catch (_) {} }
       clickCount = 0;
       firstClickDir = null;
     }, CLICK_WINDOW_MS);

@@ -2,7 +2,36 @@
 // 最新在底部，旧的往上挤（最多 6 条）。当前轮你那条是真实 <input>，能打字也能被语音填。
 (function () {
   const log = document.getElementById("log");
-  const MAX = 14;   // 固定大框能容更多；超出顶部被蒙版吃掉，再多由 cap 限制 DOM
+
+  // 把文本里的 http(s) 链接渲染成可点的 <a class="lnk">；点它 → 外部浏览器打开。
+  const URL_RE = /(https?:\/\/[^\s<>()]+[^\s<>().,;:!?'"，。；：！？、）])/g;
+  function appendLinkified(container, text) {
+    const t = String(text == null ? "" : text);
+    let last = 0, m; URL_RE.lastIndex = 0;
+    while ((m = URL_RE.exec(t))) {
+      if (m.index > last) container.appendChild(document.createTextNode(t.slice(last, m.index)));
+      const a = document.createElement("a");
+      a.className = "lnk"; a.textContent = m[0]; a.dataset.href = m[0];
+      container.appendChild(a);
+      last = m.index + m[0].length;
+    }
+    if (last < t.length) container.appendChild(document.createTextNode(t.slice(last)));
+  }
+  // 滚动粘底：默认贴最新；用户主动上滚翻历史时不把他拽回底部
+  let userScrolledUp = false;
+  function atBottom() { return log.scrollHeight - log.scrollTop - log.clientHeight < 80; }
+  function stickBottom() { log.scrollTop = log.scrollHeight; }
+  log.addEventListener("scroll", () => { userScrolledUp = !atBottom(); });
+
+  // 点击对话里的链接 → 交给主进程用系统浏览器打开（事件委托，覆盖后续动态加的气泡）
+  log.addEventListener("click", (e) => {
+    const a = e.target && e.target.closest && e.target.closest("a.lnk");
+    if (a && a.dataset.href && window.chatStackAPI && window.chatStackAPI.openLink) {
+      e.preventDefault();
+      window.chatStackAPI.openLink(a.dataset.href);
+    }
+  });
+  const MAX = 60;   // 保留更多历史在 DOM 里，配合滚轮上滚翻看（与引擎 restorePanel 的 -60 对齐）
   const FADE_MS = 30000;          // 30s 后渐隐
   const TYPE_MS = 24;             // Claude 逐字流式：每字间隔
   const TYPE_START_MS = 40;       // 几乎立刻开始打字，和 1.8s 长淡入同时进行（一边出字一边渐显）
@@ -47,10 +76,10 @@
     el.textContent = "";
     const m = raw.match(/(^|[\n\r])\s*(Tip:[^\n\r]*)$/);
     if (m) {
-      const main = document.createElement("span"); main.textContent = raw.slice(0, m.index).trim();
+      const main = document.createElement("span"); appendLinkified(main, raw.slice(0, m.index).trim());
       const tip = document.createElement("span"); tip.className = "tip"; tip.textContent = m[2].trim();
       el.appendChild(main); el.appendChild(tip);
-    } else { el.textContent = raw; }
+    } else { appendLinkified(el, raw); }
   }
 
   // Claude 逐字流式：空气泡先渐显（顶起你的消息），再一个字一个字冒出来，
@@ -67,6 +96,7 @@
       i += 1;
       textNode.textContent = full.slice(0, i);
       reportSize();                          // 随字增长 → 窗口拉长、顶起上面
+      if (!userScrolledUp) log.scrollTop = log.scrollHeight;   // 逐字时保持贴最新
       if (i < full.length) el._typeTimer = setTimeout(step, TYPE_MS);
       else { el._typeTimer = null; renderCoach(el, full); reportSize(); } // 收尾：去光标 + Tip
     }
@@ -101,18 +131,21 @@
     const t = String(text == null ? "" : text);
     let textSpan = null;
     if (instant) {
-      if (role === "coach") renderCoach(el, t); else el.textContent = t;   // 静态：无逐字/展开动画（切换会话整体渐显用）
+      // 切换会话整体渐显：每条都不要自己的入场动画（coach 的 rise / user 的瞬现），
+      // 统一只靠 #log 的整体 3 秒透明度渐显，节奏一致。
+      el.style.animation = "none"; el.style.opacity = "1"; el.style.transform = "none";
+      if (role === "coach") renderCoach(el, t); else appendLinkified(el, t);
     } else if (role === "coach") {
       typeCoach(el, t);                                    // 逐字流式
     } else if (anim === "grow") {
       textSpan = document.createElement("span");           // 一次性语音：展开 + 文字渐显
-      textSpan.textContent = t;
+      appendLinkified(textSpan, t);
       el.appendChild(textSpan);
     } else {
-      el.textContent = t;                                  // 打字/流式：直接顶上去
+      appendLinkified(el, t);                              // 打字/流式：直接顶上去
     }
     log.appendChild(el); cap();
-    // 不再用 30s 渐隐：内容在固定框内往上滚，超出顶部被透明蒙版吃掉；cap() 限制 DOM 条数
+    if (instant || !userScrolledUp) stickBottom();   // 新消息/恢复 → 贴最新；除非用户正翻历史
     if (role === "coach") persistentCoach = el;
     else if (!instant && anim === "grow" && textSpan) growIn(el, textSpan);
   }
@@ -154,7 +187,8 @@
     micLocked = locked;
     if (rowEl) rowEl.classList.toggle("locked", locked);
     if (pauseBtn) { pauseBtn.textContent = locked ? "▶" : "⏸"; pauseBtn.title = locked ? "继续录音" : "暂停录音"; }
-    if (inputEl) inputEl.disabled = locked;
+    // 暂停只是关麦：输入框保持【可打字】，只变灰，不 disable
+    if (inputEl) inputEl.disabled = false;
     requestAnimationFrame(reportSize);
   }
 
@@ -162,6 +196,13 @@
     if (!inputEl) {
       rowEl = document.createElement("div");
       rowEl.className = "input-row";
+      // 点输入框任意处（含左侧声波动画 / 空白）都聚焦输入框开始打字；只有点输入框本身/暂停键走各自默认
+      rowEl.addEventListener("mousedown", (e) => {
+        if (e.target === inputEl) return;                                   // 点文字框本身：正常放光标
+        if (e.target.closest && e.target.closest(".pause-btn")) return;     // 点暂停键：正常切换
+        e.preventDefault();                                                 // 点声波/空白：聚焦打字
+        if (inputEl) inputEl.focus();
+      });
       inputEl = document.createElement("input");
       inputEl.type = "text";
       inputEl.className = "user-input";
@@ -225,14 +266,23 @@
     });
     window.chatStackAPI.onLock((locked) => applyLock(locked)); // 引擎回报暂停态 → 对齐
     window.chatStackAPI.onMsg((p) => {
+     try {
       const { type, role, text } = p || {};
       if (type === "fade") { log.style.transition = "opacity 320ms ease"; log.style.opacity = "0"; return; }  // 渐隐当前对话
       if (type === "fadeprep") { log.style.transition = "none"; log.style.opacity = "0"; return; }            // 整体渐显前：先压到透明
       if (type === "fadein") { requestAnimationFrame(() => requestAnimationFrame(() => { log.style.transition = "opacity 3000ms ease"; log.style.opacity = "1"; })); return; } // 3 秒整体渐显
       if (type === "status") { showStatus(typeof text === "string" ? text : ""); return; }                    // 工具状态小字（非气泡）
       if (type === "lock") { applyLock(!!p.on); return; }                                                       // 暂停 → 禁输入（变灰）
-      if (type === "clear") { log.style.transition = ""; log.style.opacity = "1"; hideStatus(); log.innerHTML = ""; inputEl = null; hintEl = null; persistentCoach = null; }
-      else if (type === "input") { hideStatus(); ensureInput(typeof text === "string" ? text : ""); }  // 不强设 opacity，免得打断切换时的整体渐显
+      if (type === "typeready") {   // 上轮打字 → 直接进打字预备态：输入框就绪、聚焦、麦关
+        hideStatus(); ensureInput("");
+        if (rowEl) rowEl.classList.add("typing");
+        if (window.chatStackAPI && window.chatStackAPI.notifyTyping) window.chatStackAPI.notifyTyping(true);
+        if (inputEl) { try { inputEl.focus(); } catch (_) {} }
+        userScrolledUp = false; requestAnimationFrame(stickBottom);
+        return;
+      }
+      if (type === "clear") { log.style.transition = ""; log.style.opacity = "1"; hideStatus(); log.innerHTML = ""; inputEl = null; hintEl = null; persistentCoach = null; userScrolledUp = false; }
+      else if (type === "input") { hideStatus(); ensureInput(typeof text === "string" ? text : ""); userScrolledUp = false; requestAnimationFrame(stickBottom); }  // 显示/你的回合 → 贴最新（看得到自己最新气泡）；不强设 opacity 免得打断渐显
       else if (type === "live") { if (inputEl) inputEl.value = String(text || ""); else ensureInput(String(text || "")); }
       else if (type === "endinput") { removeInput(); }
       else if (type === "add") {
@@ -252,18 +302,20 @@
       else if (type === "hide") { /* 由 main 处理隐藏 */ }
       requestAnimationFrame(reportSize);
       setTimeout(reportSize, 60);
+     } catch (err) { try { console.error("[chat-stack-renderer] onMsg error:", err && err.message, err && err.stack); } catch (_) {} }  // 单条消息出错不拖垮整条流
     });
   }
   window.addEventListener("resize", reportSize);
+  // 把渲染器里的报错也吼出来，便于定位（Electron 会把 console 转发到主日志）
+  window.addEventListener("error", (e) => { try { console.error("[chat-stack-renderer] error:", e.message, e.filename + ":" + e.lineno); } catch (_) {} });
+  window.addEventListener("unhandledrejection", (e) => { try { console.error("[chat-stack-renderer] unhandledrejection:", e.reason && (e.reason.message || e.reason)); } catch (_) {} });
 
-  // 鼠标在输入框(.input-row)上方时让窗口捕获鼠标（可点/可输入），离开则点穿（透明大框不挡后面 App）
+  // 鼠标在「输入框 或 对话气泡」上方时让窗口捕获鼠标（可点链接 / 可滚轮翻历史 / 可输入），
+  // 在透明空白区则点穿（不挡后面的 App）。
   let _captured = false;
   document.addEventListener("mousemove", (e) => {
-    let over = false;
-    if (rowEl) {
-      const r = rowEl.getBoundingClientRect();
-      over = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
-    }
+    const t = document.elementFromPoint(e.clientX, e.clientY);
+    const over = !!(t && t.closest && t.closest(".msg, .input-row"));
     if (over !== _captured) {
       _captured = over;
       if (window.chatStackAPI && window.chatStackAPI.setCapture) window.chatStackAPI.setCapture(over);

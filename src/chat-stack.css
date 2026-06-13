@@ -9,14 +9,22 @@ html, body {
 #log {
   position: absolute;
   left: 0; right: 0; top: 0; bottom: 0;  /* 填满固定大框 */
-  display: flex; flex-direction: column; justify-content: flex-end;  /* 内容贴底，往上流 */
+  display: flex; flex-direction: column;        /* 不用 justify-content:flex-end —— 它和 overflow 同用会让上方溢出内容滚不到 */
   padding: 14px 14px 12px;
   box-sizing: border-box;
-  overflow: hidden;
-  /* 顶部透明渐变蒙版：滚上去的老对话渐隐被吃掉，固定框不 resize → 不闪 */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 100%);
-          mask-image: linear-gradient(to bottom, transparent 0%, #000 22%, #000 100%);
+  overflow-y: auto; overflow-x: hidden;        /* 滚轮上滚 → 翻看历史（最新贴底，不会过滚到屏幕下方） */
+  scrollbar-width: none;                        /* 隐藏滚动条（透明桌宠美学） */
+  /* 上下透明渐变蒙版：上滚的老对话在顶部渐隐被吃掉；底部留一点透明承接，不硬切到屏幕边 */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 97%, transparent 100%);
+          mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 97%, transparent 100%);
 }
+#log::-webkit-scrollbar { width: 0; height: 0; display: none; }
+/* 把内容压到底部（少时贴底），溢出时这条 auto 边距收为 0 → 可以上滚翻历史。替代 justify-content:flex-end，不破坏滚动 */
+#log::before { content: ""; margin-top: auto; flex: 0 0 auto; }
+
+/* 对话里的超链接：可点，字体同款蓝，下划线 */
+.lnk { color: #0a66ff; text-decoration: underline; cursor: pointer; word-break: break-all; }
+.msg.coach .lnk { color: #c4622d; }
 #log > * { margin-top: 8px; }            /* 用 margin 代替 gap，渐隐时连间距一起塌缩 */
 #log > *:first-child { margin-top: 0; }
 
@@ -109,6 +117,7 @@ body.pet-left  .listen-hint { align-self: flex-end;   margin: 0 8px -3px 0; }
   border: 1px solid rgba(10, 102, 255, 0.30);
   box-shadow: 0 3px 12px rgba(10, 60, 160, 0.14);
   opacity: 0; animation: rise 650ms cubic-bezier(0.22, 1, 0.36, 1) forwards;  /* 你说话时的输入框淡入 */
+  transition: background-color 140ms ease, border-color 140ms ease;            /* 暂停置灰平滑过渡，不硬闪 */
 }
 body.pet-right .input-row { align-self: flex-start; border-radius: 15px 15px 15px 0; } /* 直角左下 */
 body.pet-left  .input-row { align-self: flex-end;   border-radius: 15px 15px 0 15px; } /* 直角右下 */

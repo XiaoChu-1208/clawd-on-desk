@@ -310,6 +310,7 @@ function enterMiniMode(wa, viaMenu, edge) {
   // 之后 real === virtual,用 real API 读取当前 y 作为 mini 起点
   const bounds = ctx.win.getBounds();
   miniMode = true;
+  if (typeof ctx.onMiniChange === "function") { try { ctx.onMiniChange(true); } catch {} }   // 通知 coach 引擎:进 mini → 隐藏会话
   miniSleepPeeked = false;
   miniPeeked = false;
   if (edge) miniEdge = edge;
@@ -423,6 +424,7 @@ function exitMiniMode() {
 
   animateWindowParabola(clamped.x, clamped.y, JUMP_DURATION, () => {
     miniMode = false;
+    if (typeof ctx.onMiniChange === "function") { try { ctx.onMiniChange(false); } catch {} }   // 通知 coach 引擎:出 mini
     miniTransitioning = false;
     containedBoundary = null;
     ctx.sendToRenderer("mini-clip", null);

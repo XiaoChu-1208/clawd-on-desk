@@ -52,20 +52,34 @@ module.exports = function initMenu(ctx) {
       cb && cb();
     });
   }
+  // 会话菜单的多语言（跟随 ctx.lang：en / zh / zh-TW / ko / ja）
+  function coachT(key) {
+    const lang = ctx.lang || "en";
+    const M = {
+      newSession:    { en: "New Session",    zh: "新建会话",     "zh-TW": "新建會話",     ja: "新規セッション",   ko: "새 세션" },
+      switchSession: { en: "Switch Session", zh: "切换会话",     "zh-TW": "切換會話",     ja: "セッション切替",   ko: "세션 전환" },
+      endSession:    { en: "End Session",    zh: "结束会话",     "zh-TW": "結束會話",     ja: "セッション終了",   ko: "세션 종료" },
+      noSessions:    { en: "(no past sessions)", zh: "（暂无历史会话）", "zh-TW": "（暫無歷史會話）", ja: "（履歴なし）", ko: "（지난 세션 없음）" },
+      volume:        { en: "Volume",         zh: "音量",         "zh-TW": "音量",         ja: "音量",            ko: "볼륨" },
+      mute:          { en: "Mute",           zh: "静音",         "zh-TW": "靜音",         ja: "ミュート",        ko: "음소거" },
+    };
+    const row = M[key] || {};
+    return row[lang] || row.en || key;
+  }
   function buildCoachSessionItems() {
     const items = [
-      { label: "新建会话", click: () => coachPost("/session/new", null, () => refreshCoachSessions(() => {})) },
+      { label: coachT("newSession"), click: () => coachPost("/session/new", null, () => refreshCoachSessions(() => {})) },
     ];
     const list = coachSessions.length
       ? coachSessions.map((s) => ({
-          label: (s.title || "会话") + (s.count ? `  (${s.count})` : ""),
+          label: (s.title || "—") + (s.count ? `  (${s.count})` : ""),
           type: "checkbox",
           checked: s.id === coachCurrent,   // 当前会话用原生勾选标记，不用字符
           click: () => coachPost("/session/switch", { id: s.id }, () => {}),
         }))
-      : [{ label: "（暂无历史会话）", enabled: false }];
-    items.push({ label: "切换会话", submenu: list });
-    items.push({ label: "结束会话", click: () => coachPost("/session/close", null, () => {}) });
+      : [{ label: coachT("noSessions"), enabled: false }];
+    items.push({ label: coachT("switchSession"), submenu: list });
+    items.push({ label: coachT("endSession"), click: () => coachPost("/session/close", null, () => {}) });
     return items;
   }
 
@@ -73,17 +87,14 @@ module.exports = function initMenu(ctx) {
   // 选中 → POST /volume 给引擎,引擎用 afplay -v 控制桌宠说话音量。
   let coachVolume = 1.0;
   const COACH_VOLUME_LEVELS = [
-    { label: "静音", v: 0 },
-    { label: "25%", v: 0.25 },
-    { label: "50%", v: 0.5 },
-    { label: "75%", v: 0.75 },
-    { label: "100%", v: 1.0 },
+    { v: 0 },     // 静音（标签本地化）
+    { v: 0.25 }, { v: 0.5 }, { v: 0.75 }, { v: 1.0 },   // 百分比通用，不本地化
   ];
   function buildCoachVolumeMenuItem() {
     return {
-      label: "音量",
+      label: coachT("volume"),
       submenu: COACH_VOLUME_LEVELS.map((lv) => ({
-        label: lv.label,
+        label: lv.v === 0 ? coachT("mute") : `${Math.round(lv.v * 100)}%`,
         type: "checkbox",
         checked: Math.abs(coachVolume - lv.v) < 0.001,
         click: () => { coachVolume = lv.v; coachPost("/volume", { level: lv.v }, () => {}); },
