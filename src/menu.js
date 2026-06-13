@@ -69,6 +69,28 @@ module.exports = function initMenu(ctx) {
     return items;
   }
 
+  // English-coach fork: 音量(右键菜单第一项)。原生菜单不支持拖动滑块,用离散档(单选打勾)。
+  // 选中 → POST /volume 给引擎,引擎用 afplay -v 控制桌宠说话音量。
+  let coachVolume = 1.0;
+  const COACH_VOLUME_LEVELS = [
+    { label: "静音", v: 0 },
+    { label: "25%", v: 0.25 },
+    { label: "50%", v: 0.5 },
+    { label: "75%", v: 0.75 },
+    { label: "100%", v: 1.0 },
+  ];
+  function buildCoachVolumeMenuItem() {
+    return {
+      label: "音量",
+      submenu: COACH_VOLUME_LEVELS.map((lv) => ({
+        label: lv.label,
+        type: "checkbox",
+        checked: Math.abs(coachVolume - lv.v) < 0.001,
+        click: () => { coachVolume = lv.v; coachPost("/volume", { level: lv.v }, () => {}); },
+      })),
+    };
+  }
+
   function isMiniSupported() {
     const caps = typeof ctx.getActiveThemeCapabilities === "function"
       ? ctx.getActiveThemeCapabilities()
@@ -249,12 +271,6 @@ module.exports = function initMenu(ctx) {
         label: t("settings"),
         click: () => ctx.openSettingsWindow(),
       },
-      {
-        label: t("openDashboard"),
-        click: () => {
-          if (typeof ctx.openDashboard === "function") ctx.openDashboard();
-        },
-      },
       buildBringToPrimaryDisplayMenuItem(),
     );
     // #329: surface the update item in the tray menu. The label switches
@@ -408,6 +424,8 @@ module.exports = function initMenu(ctx) {
 
   function buildContextMenu() {
     const template = [
+      // English-coach fork: 音量放右键菜单第一项
+      ...(COACH ? [buildCoachVolumeMenuItem(), { type: "separator" }] : []),
       {
         ...buildMiniModeMenuItem(),
       },
@@ -418,13 +436,6 @@ module.exports = function initMenu(ctx) {
       },
       { type: "separator" },
       buildAutoApproveMenuItem(),
-      { type: "separator" },
-      {
-        label: t("openDashboard"),
-        click: () => {
-          if (typeof ctx.openDashboard === "function") ctx.openDashboard();
-        },
-      },
       { type: "separator" },
       // English-coach fork: coach 模式用「新建/切换会话」替掉上游「按文件夹起 Claude Code」那套
       ...(COACH ? buildCoachSessionItems() : [{

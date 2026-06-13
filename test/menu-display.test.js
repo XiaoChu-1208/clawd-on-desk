@@ -405,7 +405,7 @@ describe("menu taskbar recovery", () => {
 });
 
 describe("menu dashboard action", () => {
-  it("adds a context menu item that opens the Dashboard", () => {
+  it("does not expose the Dashboard in the context menu (coach fork removes it)", () => {
     const fakeElectron = {
       app: { quit: () => {}, setActivationPolicy: () => {}, dock: { show: () => {}, hide: () => {} } },
       BrowserWindow: function BrowserWindow() {},
@@ -440,12 +440,11 @@ describe("menu dashboard action", () => {
     menu.buildContextMenu();
 
     const openDashboard = ctx.contextMenu.template.find((item) => item.label === "Open Dashboard");
-    assert.ok(openDashboard, "context menu should expose dashboard entry");
-    openDashboard.click();
-    assert.strictEqual(called, 1);
+    assert.strictEqual(openDashboard, undefined, "coach fork removes the Dashboard entry from the context menu");
+    assert.strictEqual(called, 0);
   });
 
-  it("adds a tray menu item that opens the Dashboard", () => {
+  it("does not expose the Dashboard in the tray menu (coach fork removes it)", () => {
     const fakeElectron = {
       app: { quit: () => {}, setActivationPolicy: () => {}, dock: { show: () => {}, hide: () => {} } },
       BrowserWindow: function BrowserWindow() {},
@@ -484,9 +483,8 @@ describe("menu dashboard action", () => {
     menu.createTray();
 
     const openDashboard = ctx.tray.contextMenu.template.find((item) => item.label === "Open Dashboard");
-    assert.ok(openDashboard, "tray menu should expose dashboard entry");
-    openDashboard.click();
-    assert.strictEqual(called, 1);
+    assert.strictEqual(openDashboard, undefined, "coach fork removes the Dashboard entry from the tray menu");
+    assert.strictEqual(called, 0);
   });
 });
 
