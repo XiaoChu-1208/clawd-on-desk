@@ -29,6 +29,46 @@ module.exports = function initMenu(ctx) {
   // ── Translation helper (bound to ctx.lang via the shared i18n module) ──
   const t = createTranslator(() => ctx.lang);
 
+  // ── English-coach fork: 会话（新建/切换）——POST 给引擎控制端口，列表缓存在菜单里 ──
+  const COACH = !!process.env.CLAWD_COACH_MODE;
+  const COACH_PORT = Number(process.env.COACH_CONTROL_PORT || 23390);
+  let coachSessions = [];     // [{id,title,updatedAt,count}]
+  let coachCurrent = "";
+  function coachPost(reqPath, body, cb) {
+    const data = body ? JSON.stringify(body) : "";
+    const headers = data ? { "content-type": "application/json", "content-length": Buffer.byteLength(data) } : {};
+    const req = require("http").request(
+      { host: "127.0.0.1", port: COACH_PORT, path: reqPath, method: "POST", timeout: 1500, headers },
+      (res) => { let b = ""; res.on("data", (c) => { b += c; }); res.on("end", () => { let j = null; try { j = JSON.parse(b); } catch (_) {} cb && cb(null, j); }); }
+    );
+    req.on("error", (e) => cb && cb(e));
+    req.on("timeout", () => { req.destroy(); cb && cb(new Error("timeout")); });
+    if (data) req.write(data);
+    req.end();
+  }
+  function refreshCoachSessions(cb) {
+    coachPost("/sessions", null, (err, j) => {
+      if (!err && j) { coachSessions = Array.isArray(j.sessions) ? j.sessions : []; coachCurrent = j.current || ""; }
+      cb && cb();
+    });
+  }
+  function buildCoachSessionItems() {
+    const items = [
+      { label: "新建会话", click: () => coachPost("/session/new", null, () => refreshCoachSessions(() => {})) },
+    ];
+    const list = coachSessions.length
+      ? coachSessions.map((s) => ({
+          label: (s.title || "会话") + (s.count ? `  (${s.count})` : ""),
+          type: "checkbox",
+          checked: s.id === coachCurrent,   // 当前会话用原生勾选标记，不用字符
+          click: () => coachPost("/session/switch", { id: s.id }, () => {}),
+        }))
+      : [{ label: "（暂无历史会话）", enabled: false }];
+    items.push({ label: "切换会话", submenu: list });
+    items.push({ label: "结束会话", click: () => coachPost("/session/close", null, () => {}) });
+    return items;
+  }
+
   function isMiniSupported() {
     const caps = typeof ctx.getActiveThemeCapabilities === "function"
       ? ctx.getActiveThemeCapabilities()
@@ -386,7 +426,8 @@ module.exports = function initMenu(ctx) {
         },
       },
       { type: "separator" },
-      {
+      // English-coach fork: coach 模式用「新建/切换会话」替掉上游「按文件夹起 Claude Code」那套
+      ...(COACH ? buildCoachSessionItems() : [{
         label: t("newSession"),
         submenu: [
           {
@@ -402,7 +443,7 @@ module.exports = function initMenu(ctx) {
             },
           },
         ],
-      },
+      }]),
     ];
     // sendToDisplay is a multi-display-only tail entry. Push dynamically
     // (rather than visible:false) — Electron leaves a phantom gap for
@@ -463,6 +504,15 @@ module.exports = function initMenu(ctx) {
 
   function showPetContextMenu() {
     if (!ctx.win || ctx.win.isDestroyed()) return;
+    // coach 模式：先拉一把最新会话列表（localhost，毫秒级），再建菜单弹出
+    if (COACH) {
+      refreshCoachSessions(() => {
+        if (!ctx.win || ctx.win.isDestroyed()) return;
+        buildContextMenu();
+        popupMenuAt(ctx.contextMenu);
+      });
+      return;
+    }
     buildContextMenu();
     popupMenuAt(ctx.contextMenu);
   }

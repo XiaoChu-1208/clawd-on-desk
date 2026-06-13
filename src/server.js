@@ -21,6 +21,7 @@ const {
   sendStateHealthResponse,
   handleStatePost,
 } = require("./server-route-state");
+const { handleSayPost } = require("./server-route-say");
 const {
   handlePermissionPost,
   shouldBypassCCBubble,
@@ -258,6 +259,9 @@ function startHttpServer() {
         ctx,
         createRequestHookRecorder,
       });
+    } else if (req.method === "POST" && req.url === "/say") {
+      // English-coach fork: speak a line + drive an animation state.
+      handleSayPost(req, res, { ctx });
     } else {
       res.writeHead(404);
       res.end();

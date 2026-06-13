@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-15 -25 45 45" width="500" height="500">
+  <defs>
+    <style>
+      /* 单次弹跳（说话用）：只播一次，落地自己停住，不循环 */
+      .bounce-anim {
+        transform-box: fill-box;
+        transform-origin: 50% 100%; /* Base of the feet */
+        animation: bounce 1s 1 ease-in-out;
+      }
+      .shadow-anim {
+        transform-box: fill-box;
+        transform-origin: 50% 50%;
+        opacity: 0.5;                 /* 静止底色 */
+        animation: shadow 1s 1 ease-in-out;
+      }
+      /* 手臂、眼睛保持静止（去掉会卡在半截的挥手/眨眼） */
+      .spark-center { opacity: 0; animation: flash-center 1.4s 1 step-end; animation-delay: var(--delay, 0s); }
+      .spark-outer  { opacity: 0; animation: flash-outer 1.4s 1 step-end; animation-delay: var(--delay, 0s); }
+
+      @keyframes bounce {
+        0%, 15%, 100% { transform: translateY(0) scaleY(1); }
+        20% { transform: translateY(0) scaleY(0.85); }
+        40% { transform: translateY(-10px) scaleY(1.05); }
+        50% { transform: translateY(-12px) scaleY(1); }
+        60% { transform: translateY(-10px) scaleY(1.05); }
+        80% { transform: translateY(0) scaleY(0.85); }
+        85% { transform: translateY(0) scaleY(1); }
+      }
+      @keyframes shadow {
+        0%, 15%, 100% { transform: scale(1); opacity: 0.5; }
+        20% { transform: scale(1.1); opacity: 0.6; }
+        40% { transform: scale(0.6); opacity: 0.2; }
+        50% { transform: scale(0.5); opacity: 0.15; }
+        60% { transform: scale(0.6); opacity: 0.2; }
+        80% { transform: scale(1.1); opacity: 0.6; }
+        85% { transform: scale(1); opacity: 0.5; }
+      }
+      @keyframes flash-center {
+        0%  { opacity: 0; } 10% { opacity: 1; } 30% { opacity: 0; } 100%{ opacity: 0; }
+      }
+      @keyframes flash-outer {
+        0%  { opacity: 0; } 20% { opacity: 1; } 40% { opacity: 0; } 100%{ opacity: 0; }
+      }
+    </style>
+
+    <g id="px-sparkle">
+      <rect class="spark-center" x="-0.5" y="-0.5" width="1" height="1" />
+      <path class="spark-outer" d="M -0.5,-1.5 h1 v1 h-1 z
+                                   M -0.5,0.5 h1 v1 h-1 z
+                                   M -1.5,-0.5 h1 v1 h-1 z
+                                   M 0.5,-0.5 h1 v1 h-1 z" />
+    </g>
+  </defs>
+
+  <rect id="ground-shadow" class="shadow-anim" x="3" y="15" width="9" height="1" fill="#000000"/>
+
+  <g class="sparkles">
+    <use href="#px-sparkle" x="-4" y="-2" fill="#FFD700" style="--delay: 0.0s"/>
+    <use href="#px-sparkle" x="18" y="-4" fill="#FFA000" style="--delay: 0.2s"/>
+    <use href="#px-sparkle" x="20" y="10" fill="#FFF59D" style="--delay: 0.4s"/>
+    <use href="#px-sparkle" x="-6" y="12" fill="#FFC107" style="--delay: 0.5s"/>
+    <use href="#px-sparkle" x="7" y="-8" fill="#FFF59D" style="--delay: 0.3s"/>
+    <use href="#px-sparkle" x="-2" y="6" fill="#FFD700" style="--delay: 0.6s"/>
+  </g>
+
+  <g class="bounce-anim">
+    <g id="body-color-group" fill="#DE886D">
+      <rect id="outer-left-leg" x="3" y="13" width="1" height="2"/>
+      <rect id="inner-left-leg" x="5" y="13" width="1" height="2"/>
+      <rect id="inner-right-leg" x="9" y="13" width="1" height="2"/>
+      <rect id="outer-right-leg" x="11" y="13" width="1" height="2"/>
+      <rect id="torso" x="2" y="6" width="11" height="7"/>
+      <rect id="left-arm" x="0" y="9" width="2" height="2"/>
+      <rect id="right-arm" x="13" y="9" width="2" height="2"/>
+    </g>
+    <g fill="#000000">
+      <rect id="left-eye" x="4" y="8" width="1" height="2"/>
+      <rect id="right-eye" x="10" y="8" width="1" height="2"/>
+    </g>
+  </g>
+</svg>

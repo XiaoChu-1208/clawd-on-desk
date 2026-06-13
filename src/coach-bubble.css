@@ -1,0 +1,71 @@
+/* coach-bubble.css — lightweight speech bubble for the English-coach fork.
+   Independent of the permission bubble (bubble.css). Transparent window;
+   only the rounded card + tail paint. */
+html, body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  font-family: -apple-system, "Helvetica Neue", "PingFang SC", sans-serif;
+}
+
+.speech {
+  position: relative;
+  /* hug the text: size to the text's intrinsic width (stable, independent of
+     the window width → no shrink-feedback collapse), wrap only at max width. */
+  width: max-content;
+  max-width: 300px;
+  box-sizing: border-box;
+  /* uniform transparent margin (= CARD_MARGIN in coach-bubble.js) so the drop
+     shadow renders fully on every side without being clipped by the window. */
+  margin: 20px;
+  padding: 12px 15px;
+  /* three rounded corners; the corner nearest the pet stays square so the
+     bubble looks like it's emerging from that corner. Default = from bottom-
+     right (pet on the right); .from-left flips it. */
+  border-radius: 16px 16px 0 16px;
+  /* light theme */
+  background: rgba(252, 252, 253, 0.97);
+  color: #1d1d1f;
+  border: 0.5px solid rgba(0, 0, 0, 0.07);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.13);
+  backdrop-filter: blur(8px);
+  opacity: 0;
+  transform-origin: bottom right;
+  transform: translateY(4px) scale(0.96);
+  transition: opacity 180ms ease, transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* pet on the LEFT → square the bottom-left corner, grow from there */
+.speech.from-left {
+  border-radius: 16px 16px 16px 0;
+  transform-origin: bottom left;
+}
+
+.speech.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.speech-text {
+  font-size: 14.5px;
+  line-height: 1.5;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+/* a small "Tip:" line, when present, gets a soft accent */
+.speech-text .tip {
+  display: block;
+  margin-top: 6px;
+  color: #b8690a;
+  font-size: 13px;
+}
+
+/* warm theme variant (a warmer cream, still light) */
+.speech.warm {
+  background: rgba(252, 246, 238, 0.97);
+  color: #3a2c20;
+}

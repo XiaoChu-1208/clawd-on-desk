@@ -919,8 +919,11 @@ const SOUND_COOLDOWN_MS = 10000;
 
 function playSound(name) {
   if (soundMuted || doNotDisturb) return;
+  // confirm/complete 是用户主动触发的会话反馈（噔噔/完成），必须每次都响，
+  // 不受 10s 防刷冷却限制；其余（如 agent 监控音）才走冷却。
+  const explicit = name === "confirm" || name === "complete";
   const now = Date.now();
-  if (now - lastSoundTime < SOUND_COOLDOWN_MS) return;
+  if (!explicit && now - lastSoundTime < SOUND_COOLDOWN_MS) return;
   const url = themeRuntime.getSoundUrl(name);
   if (!url) return;
   lastSoundTime = now;
@@ -1549,6 +1552,29 @@ agentRuntime = createAgentRuntimeMain({
   clearCodexNotifyBubbles: (...args) => clearCodexNotifyBubbles(...args),
 });
 
+// ── Coach speech bubble (English-coach fork) — POST /say drives this ──
+const _coachBubble = require("./coach-bubble")({
+  getPetWindowBounds: () => getPetWindowBounds(),
+  getHitRectScreen: (bounds) => getHitRectScreen(bounds),
+  getNearestWorkArea: (cx, cy) => getNearestWorkArea(cx, cy),
+  ipcMain,
+});
+
+// ── User speech bubble (你的反向气泡：桌宠下方、蓝字、实时、带光标) ──
+const _userBubble = require("./user-bubble")({
+  getPetWindowBounds: () => getPetWindowBounds(),
+  getNearestWorkArea: (cx, cy) => getNearestWorkArea(cx, cy),
+  ipcMain,
+});
+
+// ── Chat stack (聊天记录栏：桌宠头顶、Claude/你各一边、可真实打字) ──
+const _chatStack = require("./chat-stack")({
+  getPetWindowBounds: () => getPetWindowBounds(),
+  getHitRectScreen: (bounds) => getHitRectScreen(bounds),
+  getNearestWorkArea: (cx, cy) => getNearestWorkArea(cx, cy),
+  ipcMain,
+});
+
 // ── HTTP server — delegated to src/server.js ──
 const _serverCtx = {
   get manageClaudeHooksAutomatically() { return manageClaudeHooksAutomatically; },
@@ -1570,6 +1596,18 @@ const _serverCtx = {
   isCodexPermissionInterceptEnabled: () => _isCodexPermissionInterceptEnabled({ agents: _settingsController.get("agents") }),
   codexSubagentClassifier: agentRuntime.getCodexSubagentClassifier(),
   setState,
+  showSpeechBubble: (payload) => _coachBubble.showSpeechBubble(payload),
+  // English-coach fork: 播一段具体动画（持续倾听=headphones-groove）；setState 一变会自动取消它
+  playPetReaction: (svg, duration) => sendToRenderer("play-click-reaction", svg, duration),
+  // English-coach fork: 播内置音效（confirm 噔噔 / complete）
+  playSound,
+  // English-coach fork: 你的反向气泡（{mode:'prompt'|'live', text} 或 {hide:true}）
+  userBubble: (payload) => {
+    if (payload && payload.hide) _userBubble.hideUserBubble();
+    else _userBubble.showUserBubble(payload || {});
+  },
+  // English-coach fork: 聊天记录栏（{type:'add'|'input'|'live'|'endinput'|'clear'|'hide', ...}）
+  chatStack: (payload) => _chatStack.chat(payload),
   updateSession: agentRuntime.updateSessionFromServer,
   resolvePermissionEntry,
   sendPermissionResponse,
@@ -3133,8 +3171,15 @@ function createWindow() {
   });
 
   // Event-level safety net for position sync
-  win.on("move", () => petWindowRuntime.syncFloatingWindowsAfterPetBoundsChange());
-  win.on("resize", () => petWindowRuntime.syncFloatingWindowsAfterPetBoundsChange());
+  const _syncCoachWindows = () => {
+    petWindowRuntime.syncFloatingWindowsAfterPetBoundsChange();
+    // English-coach fork: 逐帧跟随桌宠（拖动/缩放时丝滑贴位）
+    try { _coachBubble.reanchor(); } catch {}
+    try { _userBubble.reanchor(); } catch {}
+    try { _chatStack.reanchor(); } catch {}
+  };
+  win.on("move", _syncCoachWindows);
+  win.on("resize", _syncCoachWindows);
 
   syncSessionHudVisibility();
 

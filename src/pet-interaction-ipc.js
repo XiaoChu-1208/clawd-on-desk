@@ -91,6 +91,70 @@ function registerPetInteractionIpc(options = {}) {
     sendToRenderer("play-click-reaction", svg, duration);
   });
 
+  // English-coach fork: 连点 4 次 → 开/关语音练习。引擎在就 toggle；
+  // 引擎没开 → 自动把 coach-engine.js 拉起来，等端口就绪再 /start。
+  const COACH_PORT = Number(process.env.COACH_CONTROL_PORT || 23390);
+  let coachEngineProc = null;
+  let spawningEngine = false;
+
+  function postEngine(reqPath, cb) {
+    const req = require("http").request(
+      { host: "127.0.0.1", port: COACH_PORT, path: reqPath, method: "POST", timeout: 1500 },
+      (res) => { res.resume(); res.on("end", () => cb && cb(null)); }
+    );
+    req.on("error", (e) => cb && cb(e));
+    req.on("timeout", () => { req.destroy(); cb && cb(new Error("timeout")); });
+    req.end();
+  }
+
+  function waitForEngine(triesLeft, cb) {
+    const s = require("net").connect(COACH_PORT, "127.0.0.1");
+    s.on("connect", () => { s.destroy(); cb(true); });
+    s.on("error", () => {
+      s.destroy();
+      if (triesLeft <= 0) return cb(false);
+      setTimeout(() => waitForEngine(triesLeft - 1, cb), 300);
+    });
+  }
+
+  function spawnEngine(cb) {
+    if (spawningEngine || (coachEngineProc && !coachEngineProc.killed)) return cb && cb(false);
+    spawningEngine = true;
+    const path = require("path");
+    const entry = process.env.COACH_ENGINE_ENTRY ||
+      path.join(__dirname, "..", "..", "english-speaking-coach", "coach-engine.js");
+    try {
+      // 用 Electron 内置 node 跑引擎（ELECTRON_RUN_AS_NODE=1），不依赖系统 node 在 PATH
+      coachEngineProc = require("child_process").spawn(process.execPath, [entry], {
+        cwd: path.dirname(entry),
+        env: { ...process.env, ELECTRON_RUN_AS_NODE: "1" },
+        stdio: "ignore",
+      });
+      coachEngineProc.on("exit", () => { coachEngineProc = null; });
+      console.log("[coach] 引擎未运行 → 已拉起 coach-engine:", entry);
+    } catch (e) {
+      console.warn("[coach] 拉起引擎失败:", e.message);
+      spawningEngine = false;
+      return cb && cb(false);
+    }
+    waitForEngine(20, (up) => { spawningEngine = false; cb && cb(up); }); // 最多等 ~6s
+  }
+
+  on("coach-toggle", () => {
+    console.log("[coach] 连点4次 → /toggle-session");
+    postEngine("/toggle-session", (err) => {
+      if (!err) return;                       // 引擎在，已 toggle
+      console.log("[coach] 引擎没开 → 自动拉起再 /start");
+      spawnEngine((up) => { if (up) postEngine("/start"); });
+    });
+  });
+
+  // English-coach fork: 单击桌宠 → /poke。引擎只在「正说话」时打断并把回合交给你；
+  // 没说话/引擎没开 → 静默忽略（不自动拉引擎，单击不该把它叫醒）。
+  on("coach-poke", () => {
+    postEngine("/poke", () => {});
+  });
+
   on("drag-end", () => {
     try {
       if (!isMiniMode() && !isMiniTransitioning()) {

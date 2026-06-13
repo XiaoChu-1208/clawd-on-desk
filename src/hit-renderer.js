@@ -42,7 +42,7 @@ let mouseDownX, mouseDownY;
 let lastDragClientX;
 let dragReactionDirection = null;
 let dragMoveRAF = null;
-const DRAG_THRESHOLD = 3;
+const DRAG_THRESHOLD = 7;  // 放宽：点击时小抖动(≤7px)仍算点击，不被误判成拖动而丢掉这次点击
 
 // --- Reaction state (tracked here to gate input) ---
 let isReacting = false;
@@ -147,12 +147,14 @@ area.addEventListener("pointercancel", () => stopDrag());
 area.addEventListener("lostpointercapture", () => { if (isDragging) stopDrag(); });
 window.addEventListener("blur", stopDrag);
 
-// --- Click reaction logic (2-click = poke, 4-click = flail) ---
-const CLICK_WINDOW_MS = 400;
+// --- Click reaction logic (双击 = 开/关语音会话 + 反应动画；单击 = 显示 HUD) ---
+const CLICK_WINDOW_MS = 600;  // 放宽连击窗口：4 连击不必那么急，间隔 ≤600ms 都算连击
 
 let clickCount = 0;
 let clickTimer = null;
 let firstClickDir = null;
+let lastToggleTime = 0;
+const TOGGLE_DEBOUNCE_MS = 500;  // 双击 toggle 去抖：一次连点不会反复开关，但隔开的两次意图能跟手
 
 function _getReaction(name) {
   return _reactions[name] || null;
@@ -192,30 +194,30 @@ function handleClick(clientX) {
   const leftReact = _getReaction("clickLeft");
   const rightReact = _getReaction("clickRight");
 
-  if (clickCount >= 4 && doubleReact) {
+  if (clickCount >= 2) {
+    // English-coach fork: 双击 → 开/关语音练习（带去抖，连点多下不反复开关）+ 播反应动画
     clickCount = 0;
     firstClickDir = null;
-    if (!canPlayReactionNow()) return;
-    const files = doubleReact.files || [doubleReact.file];
-    const file = files[Math.floor(Math.random() * files.length)];
-    playReaction(file, doubleReact.duration || 3500);
-  } else if (clickCount >= 2) {
-    clickTimer = setTimeout(() => {
-      clickTimer = null;
-      clickCount = 0;
-      const dir = firstClickDir;
-      firstClickDir = null;
-      if (!canPlayReactionNow()) return;
-      if (annoyedReact && Math.random() < 0.5) {
-        playReaction(annoyedReact.file, annoyedReact.duration || 3500);
-      } else if (leftReact && rightReact) {
-        const react = dir === "left" ? leftReact : rightReact;
-        playReaction(react.file, react.duration || 2500);
+    const now = Date.now();
+    if (now - lastToggleTime > TOGGLE_DEBOUNCE_MS) {
+      lastToggleTime = now;
+      try { window.hitAPI.coachToggle && window.hitAPI.coachToggle(); } catch (_) {}
+    }
+    // 反应动画也跟到双击：优先 double(flail)，没有就用 annoyed / 左右点
+    if (canPlayReactionNow()) {
+      const react = doubleReact || annoyedReact || leftReact || rightReact;
+      if (react) {
+        const files = react.files || [react.file];
+        const file = files[Math.floor(Math.random() * files.length)];
+        playReaction(file, react.duration || 3000);
       }
-    }, CLICK_WINDOW_MS);
+    }
   } else {
     clickTimer = setTimeout(() => {
       clickTimer = null;
+      // English-coach fork: 只在「确认为单击」(等过双击窗口、没第二下) 才打断 Claude。
+      // 这样双击=暂停的第一下不会误触打断，意外的连点也不会。打断会有 ~CLICK_WINDOW_MS 的延迟，可接受。
+      if (clickCount === 1) { try { window.hitAPI.coachPoke && window.hitAPI.coachPoke(); } catch (_) {} }
       clickCount = 0;
       firstClickDir = null;
     }, CLICK_WINDOW_MS);

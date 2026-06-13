@@ -488,6 +488,10 @@ function createIntegrationSyncRuntime(options = {}) {
   }
 
   function syncEnabledStartupIntegrations() {
+    // English-coach fork: in coach mode we never monitor coding agents, so do
+    // NOT write hooks into ~/.claude/settings.json (or any agent config). The
+    // user runs Claude Code daily; clobbering their settings is unacceptable.
+    if (process.env.CLAWD_COACH_MODE) return;
     if (shouldManageClaudeHooks() && shouldSyncAgentIntegration("claude-code")) {
       syncClawdHooks();
       startClaudeSettingsWatcher();

@@ -1,0 +1,205 @@
+// chat-stack.js — 桌宠头顶的聊天记录栏（最新贴桌宠、整列往上长）。
+// 可聚焦，让最下面那条 <input> 能真实打字；回车 → 经引擎控制口 /text 发出去。
+//
+// initChatStack(deps) → { chat(payload), clear(), cleanup }
+//   payload.type: clear | add{role,text} | input{text?} | live{text} | endinput | hide
+//   deps.getPetWindowBounds() / getNearestWorkArea(cx,cy) / ipcMain
+
+const { BrowserWindow, ipcMain } = require("electron");
+const path = require("path");
+const http = require("http");
+
+const isMac = process.platform === "darwin";
+const isLinux = process.platform === "linux";
+const isWin = process.platform === "win32";
+const LINUX_WINDOW_TYPE = "toolbar";
+
+const W = 360;
+const GAP = 6;
+const ENGINE_PORT = Number(process.env.COACH_CONTROL_PORT || 23390);
+
+module.exports = function initChatStack(deps = {}) {
+  const getPetWindowBounds = deps.getPetWindowBounds;
+  const getHitRectScreen = deps.getHitRectScreen;
+  const getNearestWorkArea = deps.getNearestWorkArea;
+  const ipc = deps.ipcMain || ipcMain;
+
+  let win = null, ready = false, queue = [], currentSide = "right";
+  let followTimer = null, lastPetKey = "", lastBoundsKey = "";
+  let userHidden = false;   // 用户双击隐藏对话面板（内容保留，更新照收但不弹窗）
+
+  // 跟随桌宠移动：桌宠被拖动时持续重新贴位（窗口固定大小，只在桌宠位置真的变了才 setBounds）
+  function startFollow() {
+    if (followTimer) return;
+    followTimer = setInterval(() => {
+      if (!win || win.isDestroyed() || !win.isVisible()) return;
+      let pet; try { pet = getPetWindowBounds(); } catch { return; }
+      if (!pet) return;
+      const key = pet.x + "," + pet.y + "," + pet.width + "," + pet.height;
+      if (key !== lastPetKey) { lastPetKey = key; anchor(); }
+    }, 60);
+  }
+  function stopFollow() { if (followTimer) { clearInterval(followTimer); followTimer = null; } }
+
+  // 固定高度的对话框：内容在框内从底往上流，超出顶部被透明渐变蒙版吃掉（CSS）。
+  // 窗口尺寸恒定 → 内容增减不 resize → 不闪。
+  function fixedH(wa) { return wa ? Math.round(wa.height * 0.45) : 420; }
+
+  function pushSide() {
+    if (win && !win.isDestroyed() && ready) {
+      try { win.webContents.send("chat-side", currentSide); } catch {}
+    }
+  }
+
+  function anchor() {
+    if (!win || win.isDestroyed() || typeof getPetWindowBounds !== "function") return;
+    let pet; try { pet = getPetWindowBounds(); } catch { return; }
+    if (!pet) return;
+    let hit = null;
+    try { hit = typeof getHitRectScreen === "function" ? getHitRectScreen(pet) : null; } catch {}
+    const rect = hit && Number.isFinite(hit.left)
+      ? { left: hit.left, right: hit.right, top: hit.top }
+      : { left: pet.x, right: pet.x + pet.width, top: pet.y + pet.height * 0.55 };
+    const cx = (rect.left + rect.right) / 2;
+    const wa = typeof getNearestWorkArea === "function" ? (getNearestWorkArea(cx, rect.top) || null) : null;
+    const h = fixedH(wa);                    // 固定高度
+    const width = W;
+    const side = wa ? (cx >= wa.x + wa.width / 2 ? "right" : "left") : "right";
+    let x = side === "right" ? Math.round(rect.right - width) : Math.round(rect.left);
+    let y = Math.round(rect.top) - h - GAP;  // 框底贴桌宠头顶
+    if (wa) {
+      x = Math.max(wa.x, Math.min(x, wa.x + wa.width - width));
+      y = Math.max(wa.y, y);
+    }
+    const key = x + "," + y + "," + width + "," + h;
+    if (key !== lastBoundsKey) { lastBoundsKey = key; try { win.setBounds({ x, y, width, height: h }); } catch {} }
+    if (side !== currentSide) { currentSide = side; pushSide(); }
+  }
+
+  function ensureWindow() {
+    if (win && !win.isDestroyed()) return win;
+    win = new BrowserWindow({
+      width: W, height: 80,
+      show: false, frame: false, transparent: true, alwaysOnTop: true,
+      backgroundColor: "#00000000",    // 全透明背景：减少 macOS 透明窗口 resize 闪烁
+      resizable: false, skipTaskbar: true, hasShadow: false,
+      focusable: true,                 // 要能打字 → 可聚焦
+      ...(isLinux ? { type: LINUX_WINDOW_TYPE } : {}),
+      ...(isMac ? { type: "panel", acceptFirstMouse: true } : {}),
+      webPreferences: {
+        preload: path.join(__dirname, "preload-chat-stack.js"),
+        nodeIntegration: false, contextIsolation: true,
+        partition: "chat-stack",   // 内存型 session：重启不吃旧 CSS 磁盘缓存
+      },
+    });
+    ready = false;
+    if (isMac) win.setAlwaysOnTop(true, "screen-saver");
+    if (isWin) win.setAlwaysOnTop(true, "pop-up-menu");
+    try { win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true }); } catch {}
+    // 固定大框默认点穿（透明区不挡后面 App）；鼠标移到输入框时前端会通知捕获
+    try { win.setIgnoreMouseEvents(true, { forward: true }); } catch {}
+    win.loadFile(path.join(__dirname, "chat-stack.html"));
+    win.webContents.once("did-finish-load", () => {
+      ready = true;
+      pushSide();                       // 初始告知桌宠在哪侧
+      const q = queue; queue = [];
+      for (const p of q) deliver(p);
+    });
+    win.on("closed", () => { win = null; ready = false; stopFollow(); });
+    startFollow();
+    return win;
+  }
+
+  function deliver(payload) {
+    if (!win || win.isDestroyed()) return;
+    anchor();
+    pushSide();                                // 确保前端拿到最新侧别
+    // clear 只清内容、不显示窗口 → 避免新会话时先闪一帧上一会话的残留。
+    // userHidden（用户双击隐藏）期间：照常更新 DOM，但不把窗口顶出来——再 show 时内容已最新。
+    if (payload.type !== "clear" && !userHidden && !win.isVisible()) win.showInactive();
+    win.webContents.send("chat-msg", payload);
+  }
+
+  function onSize() { anchor(); }              // 窗口固定大小：仅确保贴位（不随内容改尺寸）
+  ipc.on("chat-stack-size", onSize);
+
+  // 前端：鼠标移到输入框 → 捕获（可点/可输入）；离开 → 点穿
+  function onCapture(_e, on) {
+    if (!win || win.isDestroyed()) return;
+    try { win.setIgnoreMouseEvents(on ? false : true, on ? {} : { forward: true }); } catch {}
+  }
+  ipc.on("chat-capture", onCapture);
+
+  // 打字回车 → 发到引擎 /text
+  function onSubmit(_e, text) {
+    const t = String(text || "").trim();
+    if (!t) return;
+    const body = JSON.stringify({ text: t });
+    const req = http.request({ host: "127.0.0.1", port: ENGINE_PORT, path: "/text", method: "POST",
+      headers: { "content-type": "application/json", "content-length": Buffer.byteLength(body) } }, (res) => res.resume());
+    req.on("error", () => {});
+    req.write(body); req.end();
+  }
+  ipc.on("chat-submit", onSubmit);
+
+  // 打字模式开/关 → 引擎停麦/开麦（不暂停会话，打字仍可发）
+  function onTyping(_e, on) {
+    const req = http.request({ host: "127.0.0.1", port: ENGINE_PORT, path: on ? "/mic-off" : "/mic-on", method: "POST", timeout: 1200 }, (res) => res.resume());
+    req.on("error", () => {});
+    req.on("timeout", () => req.destroy());
+    req.end();
+  }
+  ipc.on("chat-typing", onTyping);
+
+  // 暂停按钮 → 打引擎 /toggle，把返回的 paused 回灌给前端驱动锁定视觉
+  function onToggleMic() {
+    const req = http.request(
+      { host: "127.0.0.1", port: ENGINE_PORT, path: "/toggle", method: "POST", timeout: 1500 },
+      (res) => {
+        let b = ""; res.on("data", (c) => { b += c; });
+        res.on("end", () => {
+          let paused = false; try { paused = !!JSON.parse(b).paused; } catch {}
+          if (win && !win.isDestroyed()) win.webContents.send("chat-lock", paused);
+        });
+      }
+    );
+    req.on("error", () => {});
+    req.on("timeout", () => req.destroy());
+    req.end();
+  }
+  ipc.on("chat-toggle-mic", onToggleMic);
+
+  function chat(payload) {
+    if (!payload || typeof payload !== "object") return;
+    // 隐藏：标记 userHidden，藏窗口（内容/DOM 保留，后续更新照收只是不弹出）
+    if (payload.type === "hide") { userHidden = true; if (win && !win.isDestroyed()) win.hide(); return; }
+    // 显示：清掉 userHidden，把窗口显出来（内容已是最新）
+    if (payload.type === "show") {
+      userHidden = false; ensureWindow();
+      if (ready && win && !win.isDestroyed()) { anchor(); win.showInactive(); }
+      return;
+    }
+    // 音量波形(高频) / 上传中 / 工具状态小字 / 锁定(暂停禁输入)：只透传给前端，不触发贴位/弹窗
+    if (payload.type === "level" || payload.type === "uploading" || payload.type === "status" || payload.type === "lock") {
+      if (win && !win.isDestroyed() && ready) win.webContents.send("chat-msg", payload);
+      return;
+    }
+    // clear（新会话/重画）恢复可见态；fade 由前端做渐隐动画（透传，不动窗口）
+    if (payload.type === "clear") userHidden = false;
+    ensureWindow();
+    if (ready) deliver(payload); else queue.push(payload);
+  }
+
+  function cleanup() {
+    stopFollow();
+    try { ipc.removeListener("chat-stack-size", onSize); } catch {}
+    try { ipc.removeListener("chat-submit", onSubmit); } catch {}
+    try { ipc.removeListener("chat-toggle-mic", onToggleMic); } catch {}
+    try { ipc.removeListener("chat-capture", onCapture); } catch {}
+    try { ipc.removeListener("chat-typing", onTyping); } catch {}
+    if (win && !win.isDestroyed()) win.destroy();
+    win = null;
+  }
+
+  return { chat, clear: () => chat({ type: "clear" }), reanchor: () => anchor(), cleanup };
+};
