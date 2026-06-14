@@ -167,6 +167,7 @@
 
   let rowEl = null, pauseBtn = null, micLocked = false, thumbsEl = null;
   let pendingPasteImages = [];   // 粘贴进输入框、等待随回车一起发的剪贴板图片(data URL,可多张)
+  let pasteLoading = 0;          // 正在解码的粘贴图数量(>0 显示慢闪镭射扫光占位框)
   // 叠放缩略图(底图 + 最后一张错落叠上面,≥2 张右上角标 ❷/❸/+N);× 移除最后一张。
   function buildImageStack(srcs, opts) {
     opts = opts || {};
@@ -196,11 +197,33 @@
   function renderThumbs() {
     if (!thumbsEl) return;
     thumbsEl.innerHTML = "";
-    const has = pendingPasteImages.length > 0;
+    const has = pendingPasteImages.length > 0 || pasteLoading > 0;
     thumbsEl.style.display = has ? "" : "none";
     if (rowEl) rowEl.classList.toggle("has-thumbs", has);
-    if (has) thumbsEl.appendChild(buildImageStack(pendingPasteImages, { removable: true }));
+    if (pendingPasteImages.length) thumbsEl.appendChild(buildImageStack(pendingPasteImages, { removable: true }));
+    if (pasteLoading > 0) {                       // 慢闪镭射扫光方框:表示图片正在解码
+      const ph = el("div", "thumb-loading");
+      thumbsEl.appendChild(ph);
+    }
     requestAnimationFrame(reportSize);
+  }
+  // 粘贴剪贴板图片:立刻显示扫光占位 → 解码完换成缩略图。输入框 paste 与文档级 paste 共用。
+  function handlePaste(e) {
+    if (!thumbsEl) return;   // 没有输入框(不在你的回合)就不处理
+    const items = (e.clipboardData && e.clipboardData.items) || [];
+    let found = false;
+    for (const it of items) {
+      if (it.type && it.type.indexOf("image/") === 0) {
+        const blob = it.getAsFile(); if (!blob) continue;
+        found = true;
+        pasteLoading++; renderThumbs();   // 立刻出现「慢闪镭射扫光」占位框
+        const reader = new FileReader();
+        reader.onload = () => { pasteLoading = Math.max(0, pasteLoading - 1); pendingPasteImages.push(String(reader.result || "")); renderThumbs(); };
+        reader.onerror = () => { pasteLoading = Math.max(0, pasteLoading - 1); renderThumbs(); };
+        reader.readAsDataURL(blob);
+      }
+    }
+    if (found) e.preventDefault();
   }
 
   // ── 麦克风波形：随引擎发来的实时音量(level)起伏，暂停/无声时归于平静 ──
@@ -287,21 +310,8 @@
           } else { doSend(t); }
         }
       });
-      // 粘贴剪贴板图片 → 异步解码后追加到待发数组 + 在输入框下方显示叠放缩略图(连同文字一起回车发)
-      inputEl.addEventListener("paste", (e) => {
-        const items = (e.clipboardData && e.clipboardData.items) || [];
-        for (const it of items) {
-          if (it.type && it.type.indexOf("image/") === 0) {
-            const blob = it.getAsFile(); if (!blob) continue;
-            e.preventDefault();
-            pasteLoading++;
-            const reader = new FileReader();
-            reader.onload = () => { pasteLoading = Math.max(0, pasteLoading - 1); pendingPasteImages.push(String(reader.result || "")); renderThumbs(); };
-            reader.onerror = () => { pasteLoading = Math.max(0, pasteLoading - 1); };
-            reader.readAsDataURL(blob);
-          }
-        }
-      });
+      // 粘贴剪贴板图片 → 立刻显示「慢闪镭射扫光」占位,解码完换成缩略图(连同文字一起回车发)
+      inputEl.addEventListener("paste", handlePaste);
       // 第一个字符是 "/" → 这是斜杠命令:输入气泡用 2.3s 渐变从白变黑;删掉 "/" 再渐变变回。
       inputEl.addEventListener("input", () => {
         if (rowEl) rowEl.classList.toggle("cmd", inputEl.value.charAt(0) === "/");
@@ -348,7 +358,7 @@
   function removeInput() {
     stopWave();
     if (rowEl) { rowEl.remove(); rowEl = null; }
-    inputEl = null; pauseBtn = null; thumbsEl = null; pendingPasteImages = [];
+    inputEl = null; pauseBtn = null; thumbsEl = null; pendingPasteImages = []; pasteLoading = 0;
   }
 
   // 工具状态小字（不是对话气泡）：钉在窗口底部、靠对话气泡那侧对齐，
@@ -414,6 +424,8 @@
 
   // 鼠标在「输入框 或 对话气泡」上方时让窗口捕获鼠标（可点链接 / 可滚轮翻历史 / 可输入），
   // 在透明空白区则点穿（不挡后面的 App）。
+  // 文档级粘贴兜底:焦点没精确落在输入框、但在聊天窗里时也能接住图片粘贴
+  document.addEventListener("paste", handlePaste);
   let _captured = false;
   document.addEventListener("mousemove", (e) => {
     const t = document.elementFromPoint(e.clientX, e.clientY);

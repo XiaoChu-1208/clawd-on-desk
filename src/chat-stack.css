@@ -106,6 +106,24 @@ body.pet-left  .status-line { left: 16px;  text-align: left; }
 /* 气泡里图片下方若还有文字，留点间距 */
 .msg.has-img .img-stack { margin-bottom: 6px; }
 
+/* 粘贴图正在解码：慢闪 + 镭射扫光方框 */
+.thumb-loading {
+  position: relative; display: inline-block;
+  width: 56px; height: 56px; border-radius: 9px;
+  border: 1.5px solid rgba(255, 255, 255, 0.7);
+  background: rgba(120, 124, 134, 0.18);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  animation: thumb-pulse 1.8s ease-in-out infinite;       /* 慢闪 */
+}
+.thumb-loading::after {                                     /* 横扫的镭射光带 */
+  content: ""; position: absolute; top: 0; bottom: 0; left: -60%; width: 55%;
+  background: linear-gradient(100deg, transparent, rgba(10, 102, 255, 0.55), rgba(120, 190, 255, 0.85), rgba(10, 102, 255, 0.55), transparent);
+  animation: thumb-sweep 1.8s linear infinite;
+}
+@keyframes thumb-sweep { 0% { left: -60%; } 100% { left: 115%; } }
+@keyframes thumb-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
 /* —— 桌宠在右（默认）—— */
 body.pet-right .msg.coach { align-self: flex-end;   border-radius: 15px 15px 0 15px; } /* 直角右下 */
 body.pet-right .msg.user  { align-self: flex-start; border-radius: 15px 15px 15px 0; } /* 直角左下 */
