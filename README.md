@@ -80,6 +80,19 @@ Thinking when you prompt, typing when tools run, grooving or juggling for subage
 - **Process liveness detection** — detects crashed/exited supported agent processes and cleans up orphan sessions
 - **Startup recovery** — if Clawd restarts while any supported agent is still running, it stays awake instead of falling asleep
 
+### Chat Panel (Coach Mode)
+- **Floating chat window** — a stacked multi-bubble chat window sits above the pet; your messages appear as user bubbles, Clawd's replies as coach bubbles
+- **Paste images** — paste a clipboard image into the chat input; a preview chip appears before send, and the image renders as a thumbnail inside the bubble
+- **Slash commands** — type `/say`, `/…` in the input; command turns render as black terminal-style bubbles so you can tell them apart from regular messages
+- **Copy bubble text** — click any bubble to copy its full text to the clipboard (shows a brief "Copied" confirmation); or drag-select to copy a partial excerpt
+- **Voice tab (Settings → Voice)** — configure the microphone, speaking volume, voice effect, talk-to-interrupt sensitivity, wake word ("Claude"), knock-to-wake, and model tier (Haiku / Sonnet / Opus) all in one place
+- **Chat tab (Settings → Chat)** — model selection and session management (list, rename, switch, create, delete) live in their own tab so Voice stays focused on audio controls
+
+### Music-Reactive Pet
+- **Groove when music plays** — when your music app is running and audio is actually outputting, the pet enters a groove animation automatically; it idles when you pause or stop
+- **Configurable music app** — choose which app drives the groove from `Settings…` → `Voice` → Music App: Off, NetEase Music, Apple Music, QQ Music, 汽水音乐 (汽水音乐), Spotify, or a custom process name
+- **Zero-coupling** — `music-watch.js` is a standalone optional helper that probes the system for audio output and posts to Clawd's `/say` HTTP route; nothing changes in the core animation pipeline
+
 ### Mobile Companion (PWA)
 - **Live mirror on your phone** — enable `Settings…` → `Mobile / PWA` and open the pairing URL on your phone; the Clawd Mobile web app shows your agent sessions and their live states in real time
 - **Read-only by design** — the LAN bridge only broadcasts state; nothing on the phone can touch your machine (remote approval is on the roadmap)
