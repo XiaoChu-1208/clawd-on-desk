@@ -165,14 +165,14 @@ body.pet-left  .input-row { align-self: flex-end;   border-radius: 15px 15px 0 1
 /* 粘贴的缩略图区:在控制行【下方】,向下撑开气泡(顶部不动) */
 .input-thumbs { position: relative; z-index: 1; padding: 2px 12px 8px; }
 
-/* 斜杠命令:输入框第一个字符是 "/" → 2.3s 渐变把输入气泡从白变黑(用蒙层 ::before 渐显,不影响暂停置灰的 140ms) */
+/* 斜杠命令:输入框第一个字符是 "/" → 1s 渐变把输入气泡从白变黑(用蒙层 ::before 渐显,不影响暂停置灰的 140ms) */
 .input-row::before {
   content: ""; position: absolute; inset: 0; border-radius: inherit;
   background: rgba(20, 20, 22, 0.97); opacity: 0; z-index: 0; pointer-events: none;
-  transition: opacity 2300ms ease;
+  transition: opacity 1000ms ease;
 }
 .input-row.cmd::before { opacity: 1; }
-.user-input { transition: color 2300ms ease; }                 /* 配合命令态:文字蓝→浅,也 2.3s */
+.user-input { transition: color 1000ms ease; }                 /* 配合命令态:文字蓝→浅,也 1s */
 .input-row.cmd .user-input { color: #e6e6e8; caret-color: #e6e6e8; }
 .input-row.cmd .user-input::placeholder { color: rgba(230, 230, 232, 0.45); }
 .input-row.cmd .wave-bar { background: #e6e6e8; }
