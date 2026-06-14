@@ -139,10 +139,12 @@ module.exports = function initChatStack(deps = {}) {
   ipc.on("chat-capture", onCapture);
 
   // 打字回车 → 发到引擎 /text
-  function onSubmit(_e, text) {
-    const t = String(text || "").trim();
-    if (!t) return;
-    const body = JSON.stringify({ text: t });
+  function onSubmit(_e, payload) {
+    let t = "", image = null;
+    if (typeof payload === "string") t = payload.trim();
+    else if (payload && typeof payload === "object") { t = String(payload.text || "").trim(); image = payload.image || null; }
+    if (!t && !image) return;
+    const body = JSON.stringify(image ? { text: t, image } : { text: t });
     const req = http.request({ host: "127.0.0.1", port: ENGINE_PORT, path: "/text", method: "POST",
       headers: { "content-type": "application/json", "content-length": Buffer.byteLength(body) } }, (res) => res.resume());
     req.on("error", () => {});

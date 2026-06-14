@@ -124,25 +124,32 @@
     }));
   }
 
-  function addBubble(role, text, anim, instant) {
+  function addBubble(role, text, anim, instant, variant, image) {
     const el = document.createElement("div");
     el.className = "msg " + (role === "user" ? "user" : "coach");
+    if (variant === "cmd") el.classList.add("cmd");      // 斜杠命令:黑色气泡(终端风)
     el._born = Date.now();   // 记出生时间，用于按 30s 准点渐隐
     const t = String(text == null ? "" : text);
     let textSpan = null;
+    const isCmd = variant === "cmd";
+    if (image) {                                          // 粘贴的图片 → 气泡里方形预览
+      const im = document.createElement("img");
+      im.className = "bubble-img"; im.src = image; im.alt = "image";
+      el.appendChild(im);
+    }
     if (instant) {
       // 切换会话整体渐显：每条都不要自己的入场动画（coach 的 rise / user 的瞬现），
       // 统一只靠 #log 的整体 3 秒透明度渐显，节奏一致。
       el.style.animation = "none"; el.style.opacity = "1"; el.style.transform = "none";
-      if (role === "coach") renderCoach(el, t); else appendLinkified(el, t);
-    } else if (role === "coach") {
-      typeCoach(el, t);                                    // 逐字流式
-    } else if (anim === "grow") {
+      if (t) { if (role === "coach" && !isCmd) renderCoach(el, t); else appendLinkified(el, t); }
+    } else if (role === "coach" && !isCmd) {
+      typeCoach(el, t);                                    // 逐字流式(命令回复不逐字,直接显)
+    } else if (anim === "grow" && t) {
       textSpan = document.createElement("span");           // 一次性语音：展开 + 文字渐显
       appendLinkified(textSpan, t);
       el.appendChild(textSpan);
-    } else {
-      appendLinkified(el, t);                              // 打字/流式：直接顶上去
+    } else if (t) {
+      appendLinkified(el, t);                              // 打字/流式/命令：直接顶上去
     }
     log.appendChild(el); cap();
     if (instant || !userScrolledUp) stickBottom();   // 新消息/恢复 → 贴最新；除非用户正翻历史
@@ -151,6 +158,19 @@
   }
 
   let rowEl = null, pauseBtn = null, micLocked = false;
+  let pendingPasteImage = null, pasteChipEl = null;   // 粘贴进输入框、等待随回车一起发的剪贴板图片(data URL)
+  function showPasteChip(dataUrl) {
+    clearPasteChip();
+    if (!rowEl) return;
+    pasteChipEl = document.createElement("div");
+    pasteChipEl.className = "paste-chip";
+    const im = document.createElement("img"); im.src = dataUrl; im.alt = "pasted";
+    const x = document.createElement("button"); x.type = "button"; x.className = "paste-chip-x"; x.textContent = "×"; x.title = "Remove image";
+    x.addEventListener("mousedown", (e) => { e.preventDefault(); e.stopPropagation(); clearPasteChip(); });
+    pasteChipEl.appendChild(im); pasteChipEl.appendChild(x);
+    rowEl.insertBefore(pasteChipEl, rowEl.firstChild);
+  }
+  function clearPasteChip() { pendingPasteImage = null; if (pasteChipEl) { pasteChipEl.remove(); pasteChipEl = null; } }
 
   // ── 麦克风波形：随引擎发来的实时音量(level)起伏，暂停/无声时归于平静 ──
   let waveEl = null, waveBars = [], waveCur = [], micLevel = 0, lastLevelTs = 0, waveRAF = null, waveT = 0;
@@ -210,8 +230,22 @@
       inputEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           const t = inputEl.value.trim();
-          if (t && window.chatStackAPI) window.chatStackAPI.submit(t);
-          inputEl.value = "";
+          if ((t || pendingPasteImage) && window.chatStackAPI) window.chatStackAPI.submit(t, pendingPasteImage || null);
+          inputEl.value = ""; clearPasteChip();
+        }
+      });
+      // 粘贴剪贴板图片 → 暂存为 data URL + 显示小预览,随回车一起发(连同你打的字)
+      inputEl.addEventListener("paste", (e) => {
+        const items = (e.clipboardData && e.clipboardData.items) || [];
+        for (const it of items) {
+          if (it.type && it.type.indexOf("image/") === 0) {
+            const blob = it.getAsFile(); if (!blob) continue;
+            e.preventDefault();
+            const reader = new FileReader();
+            reader.onload = () => { pendingPasteImage = String(reader.result || ""); showPasteChip(pendingPasteImage); };
+            reader.readAsDataURL(blob);
+            break;
+          }
         }
       });
       // 点输入框聚焦 = 打字模式：暂停键+波形消失、输入框缩短、引擎停麦（打字仍可发）
@@ -247,7 +281,7 @@
   function removeInput() {
     stopWave();
     if (rowEl) { rowEl.remove(); rowEl = null; }
-    inputEl = null; pauseBtn = null;
+    inputEl = null; pauseBtn = null; pendingPasteImage = null; pasteChipEl = null;
   }
 
   // 工具状态小字（不是对话气泡）：钉在窗口底部、靠对话气泡那侧对齐，
@@ -287,8 +321,9 @@
       else if (type === "endinput") { removeInput(); }
       else if (type === "add") {
         hideStatus(); if (role === "user") removeInput();
-        if (p && p.instant) { addBubble(role, text, null, true); }                          // 静态堆叠，不动整栏透明度（配合 fadein 整体渐显）
-        else { log.style.transition = ""; log.style.opacity = "1"; addBubble(role, text, p && p.anim); }
+        const variant = p && p.variant, image = p && p.image;
+        if (p && p.instant) { addBubble(role, text, null, true, variant, image); }            // 静态堆叠，不动整栏透明度（配合 fadein 整体渐显）
+        else { log.style.transition = ""; log.style.opacity = "1"; addBubble(role, text, p && p.anim, false, variant, image); }
       }
       else if (type === "level") {                 // 麦克风实时音量 → 波形
         micLevel = Math.max(0, Math.min(1, Number(p.level) || 0));

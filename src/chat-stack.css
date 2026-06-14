@@ -68,6 +68,41 @@ body.pet-left  .status-line { left: 16px;  text-align: left; }
   animation: none; opacity: 1; transform: none;
 }
 
+/* 斜杠命令气泡：黑色终端风（用户输入的命令 + Claude 的命令回复都用它） */
+.msg.cmd {
+  background: rgba(20, 20, 22, 0.97);
+  color: #e6e6e8;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  font-weight: 400;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.msg.cmd .lnk { color: #7db4ff; }
+.msg.cmd .tip { color: #c9a25a; }
+
+/* 气泡里粘贴的图片：方形预览 */
+.bubble-img {
+  display: block;
+  width: 132px; height: 132px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 0.5px solid rgba(0, 0, 0, 0.08);
+}
+.msg .bubble-img + * { margin-top: 6px; }   /* 图片下若还有文字，留点间距 */
+
+/* 输入框里待发送的粘贴图片小预览 */
+.paste-chip {
+  position: relative; flex: 0 0 auto;
+  width: 34px; height: 34px; margin-right: 6px;
+}
+.paste-chip img { width: 100%; height: 100%; object-fit: cover; border-radius: 7px; border: 0.5px solid rgba(0,0,0,0.12); }
+.paste-chip-x {
+  position: absolute; top: -6px; right: -6px;
+  width: 16px; height: 16px; border-radius: 50%;
+  border: none; background: #1d1d1f; color: #fff;
+  font-size: 11px; line-height: 1; cursor: pointer; padding: 0;
+}
+
 /* —— 桌宠在右（默认）—— */
 body.pet-right .msg.coach { align-self: flex-end;   border-radius: 15px 15px 0 15px; } /* 直角右下 */
 body.pet-right .msg.user  { align-self: flex-start; border-radius: 15px 15px 15px 0; } /* 直角左下 */
