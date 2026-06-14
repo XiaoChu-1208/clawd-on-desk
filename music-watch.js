@@ -24,7 +24,8 @@ const AUDIO_PROBE = join(__dirname, "audio-playing.py"); // CoreAudio 出声检�
 const APP_PATTERN = process.env.APP || "neteasemusic"; // pgrep -if 匹配（大小写不敏感）
 const POLL_MS = Number(process.env.POLL_MS) || 4000;
 const KEEPALIVE_MS = Number(process.env.KEEPALIVE_MS) || 12000;
-const LISTEN_STATE = process.env.LISTEN_STATE || "juggling"; // 戴耳机摇摆
+const LISTEN_STATE = process.env.LISTEN_STATE || "juggling"; // 内部标记:听歌态
+const LISTEN_ANIM = process.env.LISTEN_ANIM || "clawd-headphones-groove.svg"; // 真正会动的律动动画(走 anim/playPetReaction)
 const IDLE_STATE = process.env.IDLE_STATE || "idle";
 
 function clawdPort() {
@@ -37,7 +38,11 @@ function clawdPort() {
 }
 
 function setState(state) {
-  const body = JSON.stringify({ state, text: "" }); // 空 text → 只切动画，不弹气泡
+  // 听歌态：用 anim(走 playPetReaction 长循环,才真的会动；state:'juggling' 在蟹主题上不动/易被覆盖)。
+  // idle 态：用 state(切状态会自动取消律动动画)。
+  const body = state === LISTEN_STATE
+    ? JSON.stringify({ anim: LISTEN_ANIM, animMs: 600000, text: "" })
+    : JSON.stringify({ state, text: "" });
   const req = http.request(
     { host: "127.0.0.1", port: clawdPort(), path: "/say", method: "POST",
       headers: { "content-type": "application/json", "content-length": Buffer.byteLength(body) },
