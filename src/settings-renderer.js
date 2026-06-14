@@ -9,6 +9,7 @@ const SIDEBAR_TABS = [
   { id: "animMap", icon: "\u{1F3AC}", labelKey: "sidebarAnimMap", available: true },
   { id: "animOverrides", icon: "\u{1F39E}", labelKey: "sidebarAnimOverrides", available: true },
   { id: "shortcuts", icon: "\u2328", labelKey: "sidebarShortcuts", available: true },
+  { id: "coach", icon: "\u{1F3A4}", labelKey: "Voice", available: true },
   // English-coach fork: \u9690\u85cf\u7528\u4e0d\u5230\u7684\u5b50\u7cfb\u7edf\u9762\u677f(Telegram \u8fdc\u7a0b\u5ba1\u6279 / \u8fdc\u7a0b SSH /
   // \u5d4c\u5728 Telegram \u9762\u677f\u91cc\u7684 hardware-buddy)\u3002\u4ee3\u7801\u4ecd\u5728,\u7ffb\u56de true \u5373\u6062\u590d\u3002
   { id: "telegram-approval", icon: "\u2708", labelKey: "sidebarTelegramApproval", available: false },
@@ -81,6 +82,7 @@ globalThis.ClawdSettingsTabTheme.init(core);
 globalThis.ClawdSettingsTabAnimMap.init(core);
 globalThis.ClawdSettingsTabAnimOverrides.init(core);
 globalThis.ClawdSettingsTabShortcuts.init(core);
+if (globalThis.ClawdSettingsTabCoach) globalThis.ClawdSettingsTabCoach.init(core);
 if (globalThis.ClawdSettingsTabTelegramApproval) globalThis.ClawdSettingsTabTelegramApproval.init(core);
 globalThis.ClawdSettingsTabAbout.init(core);
 if (globalThis.ClawdSettingsTabRemoteSsh) globalThis.ClawdSettingsTabRemoteSsh.init(core);

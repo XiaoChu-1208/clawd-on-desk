@@ -2,6 +2,7 @@
 
 const defaultFs = require("fs");
 const defaultPath = require("path");
+const http = require("http");
 const { detectAgentInstallations: defaultDetectAgentInstallations } = require("./agent-installation-detector");
 const settingsThemeImporter = require("./settings-theme-importer");
 
@@ -220,6 +221,31 @@ function registerSettingsIpc(options = {}) {
       return { status: "error", message: "settings:command payload must be { action, payload }" };
     }
     return settingsController.applyCommand(payload.action, payload.payload);
+  });
+  // Coach engine proxy: the Coach settings tab calls the local voice engine's
+  // control port (default 23390) over HTTP. Returns { ok, status, data } and
+  // never throws — if the engine isn't running, ok:false comes back gracefully.
+  handle("settings:coach", (_event, payload) => {
+    const path = (payload && payload.path) || "/";
+    const method = (payload && payload.method) || "GET";
+    const body = payload && payload.body != null ? JSON.stringify(payload.body) : null;
+    const port = Number(process.env.COACH_CONTROL_PORT || 23390);
+    return new Promise((resolve) => {
+      const headers = { "content-type": "application/json" };
+      if (body) headers["content-length"] = Buffer.byteLength(body);
+      const req = http.request({ host: "127.0.0.1", port, path, method, headers, timeout: 4000 }, (res) => {
+        let data = "";
+        res.on("data", (c) => { data += c; });
+        res.on("end", () => {
+          let parsed = null; try { parsed = JSON.parse(data || "null"); } catch { parsed = null; }
+          resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, data: parsed });
+        });
+      });
+      req.on("error", (err) => resolve({ ok: false, error: String(err && err.message || err) }));
+      req.on("timeout", () => { try { req.destroy(); } catch {} resolve({ ok: false, error: "timeout" }); });
+      if (body) req.write(body);
+      req.end();
+    });
   });
 
   handle("settings:pick-sound-file", async (event, payload) => {
