@@ -81,6 +81,9 @@ Thinking when you prompt, typing when tools run, grooving or juggling for subage
 - **Startup recovery** — if Clawd restarts while any supported agent is still running, it stays awake instead of falling asleep
 
 ### Chat Panel (Coach Mode)
+
+> Coach Mode (voice + this chat panel) is driven by **[Claude Baby](https://github.com/XiaoChu-1208/claude-baby)** — the voice brain that runs this pet with `CLAWD_COACH_MODE=1`. Easiest install: if you have the `claude` CLI, run one command and it sets everything up for you (see Claude Baby's README → "Even faster: let Claude Code install it").
+
 - **Floating chat window** — a stacked multi-bubble chat window sits above the pet; your messages appear as user bubbles, Clawd's replies as coach bubbles
 - **Paste images** — paste a clipboard image into the chat input; a preview chip appears before send, and the image renders as a thumbnail inside the bubble
 - **Slash commands** — type `/say`, `/…` in the input; command turns render as black terminal-style bubbles so you can tell them apart from regular messages
