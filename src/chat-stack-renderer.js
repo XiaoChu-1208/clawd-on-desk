@@ -258,22 +258,44 @@
       inputEl.type = "text";
       inputEl.className = "user-input";
       inputEl.setAttribute("autocomplete", "off");
+      const doSend = (t) => {
+        if (!(t || pendingPasteImages.length) || !window.chatStackAPI) return;
+        const imgs = pendingPasteImages.slice();
+        Promise.resolve(window.chatStackAPI.submit(t, imgs)).then((r) => {
+          if (r && r.accepted) {
+            if (inputEl) inputEl.value = "";          // 确认受理 → 清空(引擎随后会回灌成气泡)
+            pendingPasteImages = []; renderThumbs();
+          } else if (rowEl) {                          // 没被受理(引擎忙/没在听)→ 保留你的字和图,抖一下提示
+            rowEl.classList.remove("nudge"); void rowEl.offsetWidth; rowEl.classList.add("nudge");
+          }
+        }).catch(() => {});
+      };
       inputEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
+          e.preventDefault();
           const t = inputEl.value.trim();
-          if ((t || pendingPasteImages.length) && window.chatStackAPI) window.chatStackAPI.submit(t, pendingPasteImages.slice());
-          inputEl.value = ""; pendingPasteImages = []; renderThumbs();
+          // 还有图片在异步解码(刚粘贴大图就回车)→ 等它们进数组再发,别发出空的
+          if (pasteLoading > 0) {
+            let tries = 0;
+            const wait = () => {
+              if (pasteLoading > 0 && tries++ < 60) { setTimeout(wait, 25); return; }
+              doSend(t);
+            };
+            wait();
+          } else { doSend(t); }
         }
       });
-      // 粘贴剪贴板图片 → 追加到待发数组 + 在输入框下方显示叠放缩略图(连同你打的字一起回车发)
+      // 粘贴剪贴板图片 → 异步解码后追加到待发数组 + 在输入框下方显示叠放缩略图(连同文字一起回车发)
       inputEl.addEventListener("paste", (e) => {
         const items = (e.clipboardData && e.clipboardData.items) || [];
         for (const it of items) {
           if (it.type && it.type.indexOf("image/") === 0) {
             const blob = it.getAsFile(); if (!blob) continue;
             e.preventDefault();
+            pasteLoading++;
             const reader = new FileReader();
-            reader.onload = () => { pendingPasteImages.push(String(reader.result || "")); renderThumbs(); };
+            reader.onload = () => { pasteLoading = Math.max(0, pasteLoading - 1); pendingPasteImages.push(String(reader.result || "")); renderThumbs(); };
+            reader.onerror = () => { pasteLoading = Math.max(0, pasteLoading - 1); };
             reader.readAsDataURL(blob);
           }
         }

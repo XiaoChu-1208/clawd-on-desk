@@ -139,6 +139,7 @@ module.exports = function initChatStack(deps = {}) {
   ipc.on("chat-capture", onCapture);
 
   // 打字回车 → 发到引擎 /text
+  // 返回 { accepted } —— 渲染端据此决定是否清空输入框（避免"打了字没发出去还消失"）。
   function onSubmit(_e, payload) {
     let t = "", images = null;
     if (typeof payload === "string") t = payload.trim();
@@ -147,14 +148,22 @@ module.exports = function initChatStack(deps = {}) {
       if (Array.isArray(payload.images) && payload.images.length) images = payload.images;
       else if (payload.image) images = [payload.image];
     }
-    if (!t && (!images || !images.length)) return;
+    if (!t && (!images || !images.length)) return Promise.resolve({ accepted: false });
     const body = JSON.stringify(images ? { text: t, images } : { text: t });
-    const req = http.request({ host: "127.0.0.1", port: ENGINE_PORT, path: "/text", method: "POST",
-      headers: { "content-type": "application/json", "content-length": Buffer.byteLength(body) } }, (res) => res.resume());
-    req.on("error", () => {});
-    req.write(body); req.end();
+    return new Promise((resolve) => {
+      const req = http.request({ host: "127.0.0.1", port: ENGINE_PORT, path: "/text", method: "POST", timeout: 8000,
+        headers: { "content-type": "application/json", "content-length": Buffer.byteLength(body) } }, (res) => {
+        let d = ""; res.on("data", (c) => { d += c; }); res.on("end", () => {
+          let accepted = true; try { const j = JSON.parse(d || "{}"); accepted = j.accepted !== false; } catch { accepted = true; }
+          resolve({ accepted });
+        });
+      });
+      req.on("error", () => resolve({ accepted: false }));   // 引擎没在听 → 没发出去,别清空
+      req.on("timeout", () => { try { req.destroy(); } catch {} resolve({ accepted: false }); });
+      req.write(body); req.end();
+    });
   }
-  ipc.on("chat-submit", onSubmit);
+  ipc.handle("chat-submit", onSubmit);
 
   // 打字模式开/关 → 引擎停麦/开麦（不暂停会话，打字仍可发）
   function onTyping(_e, on) {
@@ -214,7 +223,7 @@ module.exports = function initChatStack(deps = {}) {
   function cleanup() {
     stopFollow();
     try { ipc.removeListener("chat-stack-size", onSize); } catch {}
-    try { ipc.removeListener("chat-submit", onSubmit); } catch {}
+    try { ipc.removeHandler("chat-submit"); } catch {}
     try { ipc.removeListener("chat-toggle-mic", onToggleMic); } catch {}
     try { ipc.removeListener("chat-capture", onCapture); } catch {}
     try { ipc.removeListener("chat-typing", onTyping); } catch {}

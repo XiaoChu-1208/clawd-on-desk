@@ -177,6 +177,9 @@ body.pet-left  .input-row { align-self: flex-end;   border-radius: 15px 15px 0 1
 .input-row.cmd .user-input::placeholder { color: rgba(230, 230, 232, 0.45); }
 .input-row.cmd .wave-bar { background: #e6e6e8; }
 .input-row.cmd .pause-btn { color: #e6e6e8; }
+/* 没被受理时轻微抖一下(提示"没发出去,内容还在");抖内层避免盖掉 .input-row 的 rise 透明度动画 */
+.input-row.nudge .input-main { animation: nudge 360ms ease; }
+@keyframes nudge { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-5px)} 40%{transform:translateX(5px)} 60%{transform:translateX(-3px)} 80%{transform:translateX(3px)} }
 .input-row.locked { background: rgba(199, 203, 210, 0.98); border-color: rgba(0,0,0,0.18); }
 
 .user-input {
