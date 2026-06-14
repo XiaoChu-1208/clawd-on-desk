@@ -98,11 +98,17 @@
     return row;
   }
 
-  function softBtn(label, onClick, { accent = false, danger = false } = {}) {
+  function softBtn(label, onClick, { accent = false, danger = false, disabled = false, title = "" } = {}) {
     const btn = el("button", "soft-btn" + (accent ? " accent" : ""), label);
     btn.type = "button";
-    if (danger) { btn.style.color = "#d11a2a"; }
-    if (onClick) btn.addEventListener("click", onClick);
+    if (title) btn.title = title;
+    if (disabled) {
+      btn.disabled = true;
+      btn.style.opacity = "0.4"; btn.style.cursor = "default";
+    } else {
+      if (danger) btn.style.color = "#d11a2a";
+      if (onClick) btn.addEventListener("click", onClick);
+    }
     return btn;
   }
 
@@ -246,10 +252,10 @@
       if (!isCur) {
         ctrl.appendChild(softBtn("Switch", async () => { const r = await callEngine("/session/switch", "POST", { id: s.id }); if (r && r.ok) rerender(); else helpers.showToast("Switch failed", { error: true }); }));
       }
-      ctrl.appendChild(softBtn("Delete", async () => {
+      ctrl.appendChild(softBtn("Delete", isCur ? null : async () => {
         const r = await callEngine("/session/delete", "POST", { id: s.id });
         if (r && r.ok) rerender(); else helpers.showToast("Delete failed", { error: true });
-      }, { danger: true }));
+      }, { danger: true, disabled: isCur, title: isCur ? "当前会话不能删除（先切换或新建）" : "" }));
       rows.push(row);
     }
     return helpers.buildSection("Sessions", rows);
@@ -257,8 +263,10 @@
 
   // ---------- render ----------
 
-  async function load(mount, status) {
-    const [cfgRes, micRes] = await Promise.all([callEngine("/config", "GET"), callEngine("/mics", "GET")]);
+  // which: "voice"(麦克风/语音/唤醒/音乐) | "session"(模型 + 会话)
+  async function load(mount, status, which) {
+    const needMics = which === "voice";
+    const [cfgRes, micRes] = await Promise.all([callEngine("/config", "GET"), needMics ? callEngine("/mics", "GET") : Promise.resolve(null)]);
     if (!cfgRes || !cfgRes.ok || !cfgRes.data || !cfgRes.data.config) {
       mount.innerHTML = "";
       status.textContent = "Voice engine isn't running. Start it (./start.sh) and reopen this tab.";
@@ -269,33 +277,39 @@
     cfg = cfgRes.data.config;
     const sessions = (cfgRes.data.sessions) || [];
     const current = cfgRes.data.current;
-    const mics = (micRes && micRes.ok && micRes.data && micRes.data.mics) || [];
-    const curMic = (micRes && micRes.ok && micRes.data && micRes.data.current) || cfg.mic;
-    const rerender = () => load(mount, status);
+    const rerender = () => load(mount, status, which);
     mount.innerHTML = "";
-    mount.appendChild(micSection(mics, curMic, rerender));
-    mount.appendChild(voiceSection());
-    mount.appendChild(wakeSection());
-    mount.appendChild(musicSection());
-    mount.appendChild(modelSection());
-    mount.appendChild(sessionsSection(sessions, current, rerender));
+    if (which === "session") {
+      mount.appendChild(modelSection());
+      mount.appendChild(sessionsSection(sessions, current, rerender));
+    } else {
+      const mics = (micRes && micRes.ok && micRes.data && micRes.data.mics) || [];
+      const curMic = (micRes && micRes.ok && micRes.data && micRes.data.current) || cfg.mic;
+      mount.appendChild(micSection(mics, curMic, rerender));
+      mount.appendChild(voiceSection());
+      mount.appendChild(wakeSection());
+      mount.appendChild(musicSection());
+    }
   }
 
-  function render(parent, coreRef) {
-    core = coreRef;
-    helpers = core.helpers;
-    const h1 = el("h1", null, "Claude Baby");
-    parent.appendChild(h1);
-    const status = el("p", null, "Loading…");
-    status.style.cssText = "font-size:12px;color:var(--text-secondary);margin:0 0 14px;";
-    parent.appendChild(status);
-    const mount = el("div");
-    parent.appendChild(mount);
-    load(mount, status);
+  function makeRender(which, heading) {
+    return function (parent, coreRef) {
+      core = coreRef;
+      helpers = core.helpers;
+      const h1 = el("h1", null, heading);
+      parent.appendChild(h1);
+      const status = el("p", null, "Loading…");
+      status.style.cssText = "font-size:12px;color:var(--text-secondary);margin:0 0 14px;";
+      parent.appendChild(status);
+      const mount = el("div");
+      parent.appendChild(mount);
+      load(mount, status, which);
+    };
   }
 
   function init(coreRef) {
-    coreRef.tabs.coach = { render };
+    coreRef.tabs.coach = { render: makeRender("voice", "Voice") };           // 麦克风 / 语音 / 唤醒 / 音乐
+    coreRef.tabs.session = { render: makeRender("session", "Chat & Model") }; // 模型 + 会话(独立菜单页)
   }
 
   root.ClawdSettingsTabCoach = { init };

@@ -10,6 +10,7 @@ const SIDEBAR_TABS = [
   { id: "animOverrides", icon: "\u{1F39E}", labelKey: "sidebarAnimOverrides", available: true },
   { id: "shortcuts", icon: "\u2328", labelKey: "sidebarShortcuts", available: true },
   { id: "coach", icon: "\u{1F3A4}", labelKey: "Voice", available: true },
+  { id: "session", icon: "\u{1F4AC}", labelKey: "Chat", available: true },
   // English-coach fork: \u9690\u85cf\u7528\u4e0d\u5230\u7684\u5b50\u7cfb\u7edf\u9762\u677f(Telegram \u8fdc\u7a0b\u5ba1\u6279 / \u8fdc\u7a0b SSH /
   // \u5d4c\u5728 Telegram \u9762\u677f\u91cc\u7684 hardware-buddy)\u3002\u4ee3\u7801\u4ecd\u5728,\u7ffb\u56de true \u5373\u6062\u590d\u3002
   { id: "telegram-approval", icon: "\u2708", labelKey: "sidebarTelegramApproval", available: false },
@@ -22,12 +23,11 @@ function renderSidebar() {
   const sidebar = document.getElementById("sidebar");
   if (!sidebar) return;
   sidebar.innerHTML = "";
-  if (
-    globalThis.ClawdSettingsDoctorModal
-    && typeof globalThis.ClawdSettingsDoctorModal.renderSidebarIndicator === "function"
-  ) {
-    globalThis.ClawdSettingsDoctorModal.renderSidebarIndicator(sidebar, core);
-  }
+  // English-coach fork: 隐藏 Clawd Doctor(agent 集成诊断)——这个 fork 用不到,跟隐藏 dashboard/agent 面板一致。
+  // 想恢复:取消下面这段注释即可。
+  // if (globalThis.ClawdSettingsDoctorModal && typeof globalThis.ClawdSettingsDoctorModal.renderSidebarIndicator === "function") {
+  //   globalThis.ClawdSettingsDoctorModal.renderSidebarIndicator(sidebar, core);
+  // }
   for (const tab of SIDEBAR_TABS) {
     // English-coach fork: 不可用的 tab 直接不渲染——连灰色的「待推出」占位也不显示。
     if (!tab.available) continue;
