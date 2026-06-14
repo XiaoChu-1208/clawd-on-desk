@@ -140,11 +140,15 @@ module.exports = function initChatStack(deps = {}) {
 
   // 打字回车 → 发到引擎 /text
   function onSubmit(_e, payload) {
-    let t = "", image = null;
+    let t = "", images = null;
     if (typeof payload === "string") t = payload.trim();
-    else if (payload && typeof payload === "object") { t = String(payload.text || "").trim(); image = payload.image || null; }
-    if (!t && !image) return;
-    const body = JSON.stringify(image ? { text: t, image } : { text: t });
+    else if (payload && typeof payload === "object") {
+      t = String(payload.text || "").trim();
+      if (Array.isArray(payload.images) && payload.images.length) images = payload.images;
+      else if (payload.image) images = [payload.image];
+    }
+    if (!t && (!images || !images.length)) return;
+    const body = JSON.stringify(images ? { text: t, images } : { text: t });
     const req = http.request({ host: "127.0.0.1", port: ENGINE_PORT, path: "/text", method: "POST",
       headers: { "content-type": "application/json", "content-length": Buffer.byteLength(body) } }, (res) => res.resume());
     req.on("error", () => {});

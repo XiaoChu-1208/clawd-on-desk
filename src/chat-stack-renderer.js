@@ -124,7 +124,7 @@
     }));
   }
 
-  function addBubble(role, text, anim, instant, variant, image) {
+  function addBubble(role, text, anim, instant, variant, images) {
     const el = document.createElement("div");
     el.className = "msg " + (role === "user" ? "user" : "coach");
     if (variant === "cmd") el.classList.add("cmd");      // 斜杠命令:黑色气泡(终端风)
@@ -132,11 +132,8 @@
     const t = String(text == null ? "" : text);
     let textSpan = null;
     const isCmd = variant === "cmd";
-    if (image) {                                          // 粘贴的图片 → 气泡里方形预览
-      const im = document.createElement("img");
-      im.className = "bubble-img"; im.src = image; im.alt = "image";
-      el.appendChild(im);
-    }
+    const hasImgs = Array.isArray(images) && images.length > 0;
+    if (hasImgs) { el.classList.add("has-img"); el.appendChild(buildImageStack(images, { big: true })); }   // 粘贴的图片 → 气泡里方形(叠放)预览
     if (instant) {
       // 切换会话整体渐显：每条都不要自己的入场动画（coach 的 rise / user 的瞬现），
       // 统一只靠 #log 的整体 3 秒透明度渐显，节奏一致。
@@ -153,24 +150,58 @@
     }
     log.appendChild(el); cap();
     if (instant || !userScrolledUp) stickBottom();   // 新消息/恢复 → 贴最新；除非用户正翻历史
+    // 带图的用户气泡:从底边基线"长出来"——底边不动、高度往上展开(因为整列贴底锚定)。
+    if (hasImgs && role === "user" && !instant) {
+      el.style.overflow = "hidden"; el.style.maxHeight = "0px";
+      requestAnimationFrame(() => {
+        const target = el.scrollHeight;
+        el.style.transition = "max-height 400ms cubic-bezier(0.22, 1, 0.36, 1)";
+        el.style.maxHeight = target + "px";
+        if (!userScrolledUp) stickBottom();
+        setTimeout(() => { el.style.maxHeight = ""; el.style.overflow = ""; el.style.transition = ""; }, 440);
+      });
+    }
     if (role === "coach") persistentCoach = el;
     else if (!instant && anim === "grow" && textSpan) growIn(el, textSpan);
   }
 
-  let rowEl = null, pauseBtn = null, micLocked = false;
-  let pendingPasteImage = null, pasteChipEl = null;   // 粘贴进输入框、等待随回车一起发的剪贴板图片(data URL)
-  function showPasteChip(dataUrl) {
-    clearPasteChip();
-    if (!rowEl) return;
-    pasteChipEl = document.createElement("div");
-    pasteChipEl.className = "paste-chip";
-    const im = document.createElement("img"); im.src = dataUrl; im.alt = "pasted";
-    const x = document.createElement("button"); x.type = "button"; x.className = "paste-chip-x"; x.textContent = "×"; x.title = "Remove image";
-    x.addEventListener("mousedown", (e) => { e.preventDefault(); e.stopPropagation(); clearPasteChip(); });
-    pasteChipEl.appendChild(im); pasteChipEl.appendChild(x);
-    rowEl.insertBefore(pasteChipEl, rowEl.firstChild);
+  let rowEl = null, pauseBtn = null, micLocked = false, thumbsEl = null;
+  let pendingPasteImages = [];   // 粘贴进输入框、等待随回车一起发的剪贴板图片(data URL,可多张)
+  // 叠放缩略图(底图 + 最后一张错落叠上面,≥2 张右上角标 ❷/❸/+N);× 移除最后一张。
+  function buildImageStack(srcs, opts) {
+    opts = opts || {};
+    const stack = document.createElement("div");
+    stack.className = "img-stack" + (opts.big ? " big" : "");
+    const show = Math.min(srcs.length, 2);
+    for (let i = 0; i < show; i++) {
+      const im = document.createElement("img");
+      im.className = "stack-img " + (i === show - 1 ? "top" : "under");
+      im.src = srcs[srcs.length - show + i]; im.alt = "image";
+      stack.appendChild(im);
+    }
+    if (srcs.length >= 2) {
+      const badge = document.createElement("span");
+      badge.className = "stack-badge";
+      badge.textContent = srcs.length === 2 ? "❷" : (srcs.length === 3 ? "❸" : "+" + srcs.length);
+      stack.appendChild(badge);
+    }
+    if (opts.removable) {
+      const x = document.createElement("button");
+      x.type = "button"; x.className = "stack-x"; x.textContent = "×"; x.title = "Remove";
+      x.addEventListener("mousedown", (e) => { e.preventDefault(); e.stopPropagation(); pendingPasteImages.pop(); renderThumbs(); });
+      stack.appendChild(x);
+    }
+    return stack;
   }
-  function clearPasteChip() { pendingPasteImage = null; if (pasteChipEl) { pasteChipEl.remove(); pasteChipEl = null; } }
+  function renderThumbs() {
+    if (!thumbsEl) return;
+    thumbsEl.innerHTML = "";
+    const has = pendingPasteImages.length > 0;
+    thumbsEl.style.display = has ? "" : "none";
+    if (rowEl) rowEl.classList.toggle("has-thumbs", has);
+    if (has) thumbsEl.appendChild(buildImageStack(pendingPasteImages, { removable: true }));
+    requestAnimationFrame(reportSize);
+  }
 
   // ── 麦克风波形：随引擎发来的实时音量(level)起伏，暂停/无声时归于平静 ──
   let waveEl = null, waveBars = [], waveCur = [], micLevel = 0, lastLevelTs = 0, waveRAF = null, waveT = 0;
@@ -230,11 +261,11 @@
       inputEl.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           const t = inputEl.value.trim();
-          if ((t || pendingPasteImage) && window.chatStackAPI) window.chatStackAPI.submit(t, pendingPasteImage || null);
-          inputEl.value = ""; clearPasteChip();
+          if ((t || pendingPasteImages.length) && window.chatStackAPI) window.chatStackAPI.submit(t, pendingPasteImages.slice());
+          inputEl.value = ""; pendingPasteImages = []; renderThumbs();
         }
       });
-      // 粘贴剪贴板图片 → 暂存为 data URL + 显示小预览,随回车一起发(连同你打的字)
+      // 粘贴剪贴板图片 → 追加到待发数组 + 在输入框下方显示叠放缩略图(连同你打的字一起回车发)
       inputEl.addEventListener("paste", (e) => {
         const items = (e.clipboardData && e.clipboardData.items) || [];
         for (const it of items) {
@@ -242,11 +273,14 @@
             const blob = it.getAsFile(); if (!blob) continue;
             e.preventDefault();
             const reader = new FileReader();
-            reader.onload = () => { pendingPasteImage = String(reader.result || ""); showPasteChip(pendingPasteImage); };
+            reader.onload = () => { pendingPasteImages.push(String(reader.result || "")); renderThumbs(); };
             reader.readAsDataURL(blob);
-            break;
           }
         }
+      });
+      // 第一个字符是 "/" → 这是斜杠命令:输入气泡用 2.3s 渐变从白变黑;删掉 "/" 再渐变变回。
+      inputEl.addEventListener("input", () => {
+        if (rowEl) rowEl.classList.toggle("cmd", inputEl.value.charAt(0) === "/");
       });
       // 点输入框聚焦 = 打字模式：暂停键+波形消失、输入框缩短、引擎停麦（打字仍可发）
       inputEl.addEventListener("focus", () => {
@@ -268,12 +302,21 @@
         if (window.chatStackAPI) window.chatStackAPI.toggleMic();
       });
       waveEl = buildWave();
-      rowEl.appendChild(waveEl);     // 波形在输入框最左
-      rowEl.appendChild(inputEl);
-      rowEl.appendChild(pauseBtn);
+      // 控制行(波形+输入+暂停)横排,包进 .input-main;粘贴的缩略图在它【下方】(气泡顶部不动、向下拉伸)
+      const main = document.createElement("div");
+      main.className = "input-main";
+      main.appendChild(waveEl);
+      main.appendChild(inputEl);
+      main.appendChild(pauseBtn);
+      rowEl.appendChild(main);
+      thumbsEl = document.createElement("div");
+      thumbsEl.className = "input-thumbs";
+      thumbsEl.style.display = "none";
+      rowEl.appendChild(thumbsEl);
       log.appendChild(rowEl);    // 输入框落最底 → 发送后消息从同一位置出现，不再错位
       cap();
       startWave();
+      renderThumbs();       // 复原可能残留的待发图(一般为空)
       applyLock(micLocked); // 新建输入框时同步当前暂停态
     }
     if (typeof value === "string") inputEl.value = value;
@@ -281,7 +324,7 @@
   function removeInput() {
     stopWave();
     if (rowEl) { rowEl.remove(); rowEl = null; }
-    inputEl = null; pauseBtn = null; pendingPasteImage = null; pasteChipEl = null;
+    inputEl = null; pauseBtn = null; thumbsEl = null; pendingPasteImages = [];
   }
 
   // 工具状态小字（不是对话气泡）：钉在窗口底部、靠对话气泡那侧对齐，
@@ -321,9 +364,9 @@
       else if (type === "endinput") { removeInput(); }
       else if (type === "add") {
         hideStatus(); if (role === "user") removeInput();
-        const variant = p && p.variant, image = p && p.image;
-        if (p && p.instant) { addBubble(role, text, null, true, variant, image); }            // 静态堆叠，不动整栏透明度（配合 fadein 整体渐显）
-        else { log.style.transition = ""; log.style.opacity = "1"; addBubble(role, text, p && p.anim, false, variant, image); }
+        const variant = p && p.variant, images = (p && (p.images || (p.image ? [p.image] : null))) || null;
+        if (p && p.instant) { addBubble(role, text, null, true, variant, images); }            // 静态堆叠，不动整栏透明度（配合 fadein 整体渐显）
+        else { log.style.transition = ""; log.style.opacity = "1"; addBubble(role, text, p && p.anim, false, variant, images); }
       }
       else if (type === "level") {                 // 麦克风实时音量 → 波形
         micLevel = Math.max(0, Math.min(1, Number(p.level) || 0));

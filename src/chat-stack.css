@@ -80,28 +80,31 @@ body.pet-left  .status-line { left: 16px;  text-align: left; }
 .msg.cmd .lnk { color: #7db4ff; }
 .msg.cmd .tip { color: #c9a25a; }
 
-/* 气泡里粘贴的图片：方形预览 */
-.bubble-img {
-  display: block;
-  width: 132px; height: 132px;
-  object-fit: cover;
-  border-radius: 10px;
-  border: 0.5px solid rgba(0, 0, 0, 0.08);
+/* 叠放图片缩略图(粘贴预览 + 气泡里都用)：底图 + 最后一张错落叠上面，≥2 张右上角标 ❷ */
+.img-stack { position: relative; display: inline-block; line-height: 0; }
+.stack-img {
+  display: block; object-fit: cover;
+  width: 56px; height: 56px; border-radius: 9px;
+  border: 1.5px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.22);
 }
-.msg .bubble-img + * { margin-top: 6px; }   /* 图片下若还有文字，留点间距 */
-
-/* 输入框里待发送的粘贴图片小预览 */
-.paste-chip {
-  position: relative; flex: 0 0 auto;
-  width: 34px; height: 34px; margin-right: 6px;
+.img-stack.big .stack-img { width: 132px; height: 132px; border-radius: 11px; border-width: 2px; }
+.stack-img.under { position: absolute; left: 0; top: 0; transform: rotate(-4deg) translate(-4px, 3px); z-index: 0; }
+.stack-img.top { position: relative; z-index: 1; transform: rotate(1.5deg); }
+.img-stack .stack-badge {
+  position: absolute; top: -7px; right: -7px; z-index: 2;
+  min-width: 19px; height: 19px; padding: 0 4px; box-sizing: border-box;
+  border-radius: 999px; background: #d9534f; color: #fff;
+  font-size: 12px; font-weight: 700; line-height: 19px; text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
-.paste-chip img { width: 100%; height: 100%; object-fit: cover; border-radius: 7px; border: 0.5px solid rgba(0,0,0,0.12); }
-.paste-chip-x {
-  position: absolute; top: -6px; right: -6px;
-  width: 16px; height: 16px; border-radius: 50%;
+.img-stack .stack-x {
+  position: absolute; top: -7px; left: -7px; z-index: 3;
+  width: 18px; height: 18px; border-radius: 50%; padding: 0;
   border: none; background: #1d1d1f; color: #fff;
-  font-size: 11px; line-height: 1; cursor: pointer; padding: 0;
+  font-size: 12px; line-height: 1; cursor: pointer;
 }
+/* 气泡里图片下方若还有文字，留点间距 */
+.msg.has-img .img-stack { margin-bottom: 6px; }
 
 /* —— 桌宠在右（默认）—— */
 body.pet-right .msg.coach { align-self: flex-end;   border-radius: 15px 15px 0 15px; } /* 直角右下 */
@@ -144,8 +147,8 @@ body.pet-left  .listen-hint { align-self: flex-end;   margin: 0 8px -3px 0; }
 /* 当前轮：输入框（外框=.input-row 这个胶囊），暂停按钮内嵌在它右端。
    宽度随字扩展：空时只容下波形+暂停键，打字/说话时变长，到 max-width 封顶。 */
 .input-row {
-  box-sizing: border-box;
-  display: inline-flex; align-items: center;
+  position: relative; box-sizing: border-box;
+  display: inline-flex; flex-direction: column; align-items: stretch;   /* 列:控制行在上,粘贴缩略图在下(顶部不动、向下拉伸) */
   width: max-content; max-width: 90%;
   padding: 0 5px 0 0;                        /* 右侧给内嵌按钮留点边 */
   background: rgba(255, 255, 255, 0.98);
@@ -156,6 +159,24 @@ body.pet-left  .listen-hint { align-self: flex-end;   margin: 0 8px -3px 0; }
 }
 body.pet-right .input-row { align-self: flex-start; border-radius: 15px 15px 15px 0; } /* 直角左下 */
 body.pet-left  .input-row { align-self: flex-end;   border-radius: 15px 15px 0 15px; } /* 直角右下 */
+
+/* 控制行(波形+输入+暂停)保持横排 */
+.input-main { display: flex; align-items: center; position: relative; z-index: 1; }
+/* 粘贴的缩略图区:在控制行【下方】,向下撑开气泡(顶部不动) */
+.input-thumbs { position: relative; z-index: 1; padding: 2px 12px 8px; }
+
+/* 斜杠命令:输入框第一个字符是 "/" → 2.3s 渐变把输入气泡从白变黑(用蒙层 ::before 渐显,不影响暂停置灰的 140ms) */
+.input-row::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: rgba(20, 20, 22, 0.97); opacity: 0; z-index: 0; pointer-events: none;
+  transition: opacity 2300ms ease;
+}
+.input-row.cmd::before { opacity: 1; }
+.user-input { transition: color 2300ms ease; }                 /* 配合命令态:文字蓝→浅,也 2.3s */
+.input-row.cmd .user-input { color: #e6e6e8; caret-color: #e6e6e8; }
+.input-row.cmd .user-input::placeholder { color: rgba(230, 230, 232, 0.45); }
+.input-row.cmd .wave-bar { background: #e6e6e8; }
+.input-row.cmd .pause-btn { color: #e6e6e8; }
 .input-row.locked { background: rgba(199, 203, 210, 0.98); border-color: rgba(0,0,0,0.18); }
 
 .user-input {
