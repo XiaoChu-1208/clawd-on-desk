@@ -68,6 +68,8 @@ body.pet-left  .status-line { left: 16px;  text-align: left; }
   /* 你的消息「发出」时直接顶上去，不再重新渐显（淡入只发生在你说话时的输入框上） */
   animation: none; opacity: 1; transform: none;
 }
+/* 带图的「你」气泡比较高：发出时让它走 rise 从下方升入（把上面推上去，不闪现） */
+.msg.user.has-img { opacity: 0; animation: rise 700ms cubic-bezier(0.33, 0, 0.2, 1) forwards; }
 
 /* 斜杠命令气泡：黑色终端风（用户输入的命令 + Claude 的命令回复都用它） */
 .msg.cmd {
@@ -220,6 +222,7 @@ body.pet-left  .input-row { align-self: flex-end;   border-radius: 15px 15px 0 1
 /* 内嵌暂停 / 继续按钮 */
 .pause-btn {
   flex: 0 0 auto; width: 30px; height: 30px; padding: 0; margin-left: 2px;   /* 命中区放大 + 与输入框留点距,别点偏成打字模式 */
+  position: relative; z-index: 3;            /* 抬到最上层:确保 ⏸ 是该处的命中目标(否则被同行其它层盖住→点了变 type、光标还是箭头) */
   border-radius: 50%; border: none; background: transparent;
   color: #0a66ff; font-size: 12px; line-height: 1; cursor: pointer;
   display: flex; align-items: center; justify-content: center;

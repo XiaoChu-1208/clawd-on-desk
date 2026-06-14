@@ -27,6 +27,7 @@ module.exports = function initChatStack(deps = {}) {
   let win = null, ready = false, queue = [], currentSide = "right";
   let followTimer = null, lastPetKey = "", lastBoundsKey = "";
   let userHidden = false;   // 用户双击隐藏对话面板（内容保留，更新照收但不弹窗）
+  let composeExtra = 0;     // 合成(粘图)时窗口在固定高度上【向下】多长出来的高度(px)，由渲染端 reportSize 上报
 
   // 跟随桌宠移动：桌宠被拖动时持续重新贴位（窗口固定大小，只在桌宠位置真的变了才 setBounds）
   function startFollow() {
@@ -62,11 +63,12 @@ module.exports = function initChatStack(deps = {}) {
       : { left: pet.x, right: pet.x + pet.width, top: pet.y + pet.height * 0.55 };
     const cx = (rect.left + rect.right) / 2;
     const wa = typeof getNearestWorkArea === "function" ? (getNearestWorkArea(cx, rect.top) || null) : null;
-    const h = fixedH(wa);                    // 固定高度
+    const baseH = fixedH(wa);                 // 基础固定高度
+    const h = baseH + composeExtra;           // 合成(粘图)时:在基础高度上【向下】增高,把预览图包进来
     const width = W;
     const side = wa ? (cx >= wa.x + wa.width / 2 ? "right" : "left") : "right";
     let x = side === "right" ? Math.round(rect.right - width) : Math.round(rect.left);
-    let y = Math.round(rect.top) - h - GAP;  // 框底贴桌宠头顶
+    let y = Math.round(rect.top) - baseH - GAP;  // 顶部按【基础高度】定位 → 输入气泡顶不动;composeExtra 全往下长(盖到桌宠头那块)
     if (wa) {
       x = Math.max(wa.x, Math.min(x, wa.x + wa.width - width));
       y = Math.max(wa.y, y);
@@ -128,7 +130,14 @@ module.exports = function initChatStack(deps = {}) {
     win.webContents.send("chat-msg", payload);
   }
 
-  function onSize() { anchor(); }              // 窗口固定大小：仅确保贴位（不随内容改尺寸）
+  // 渲染端上报合成时缩略图区的额外高度 → 窗口向下增高包住预览;没图时报 0 缩回固定高度。
+  function onSize(_e, extra) {
+    const v = Math.max(0, Math.min(400, Math.round(Number(extra) || 0)));   // 封顶 400px 防失控
+    if (v === composeExtra) return;                                        // 没变化就忽略(正常打字每字都报 0,别每字重算)
+    composeExtra = v;
+    lastBoundsKey = "";                                                     // 高度变了 → 强制重设界(即使桌宠没动)
+    anchor();
+  }
   ipc.on("chat-stack-size", onSize);
 
   // 前端：鼠标移到输入框 → 捕获（可点/可输入）；离开 → 点穿

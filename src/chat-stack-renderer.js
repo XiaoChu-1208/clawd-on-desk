@@ -67,9 +67,18 @@
     });
   }
 
-  // 固定大小的对话框：窗口尺寸恒定、内容在框内从底往上流、超出顶部被透明蒙版吃掉。
-  // 所以前端不再驱动窗口尺寸 → 不 resize → 不闪。reportSize 保留为空，兼容旧调用点。
-  function reportSize() {}
+  // 固定大小的对话框：正常消息【不】驱动窗口尺寸 → 不 resize、不闪（内容从底往上流，超出顶部被蒙版吃掉）。
+  // 唯一例外：你粘了图正在【合成】时，把「缩略图区需要的额外高度」报给主进程，让窗口在基础高度上【向下】长出来、
+  // 把预览图包住（输入气泡顶部不动）。发出 / 清空 / 没图时报 0 → 窗口缩回固定高度。
+  function reportSize() {
+    if (!window.chatStackAPI || !window.chatStackAPI.reportSize) return;
+    let extra = 0;
+    if (thumbsEl && thumbsEl.style.display !== "none") {
+      const h = thumbsEl.getBoundingClientRect().height;
+      if (h > 0) extra = Math.ceil(h);
+    }
+    window.chatStackAPI.reportSize(extra);
+  }
   function cap() { while (log.children.length > MAX) log.removeChild(log.firstChild); }
 
   function renderCoach(el, raw) {
@@ -233,7 +242,8 @@
         reader.readAsDataURL(blob);
       }
     }
-    if (found) e.preventDefault();
+    // 处理了图就拦下来:既阻默认粘贴,又阻冒泡 → 避免 input + document 两个监听各跑一遍把图粘成两张
+    if (found) { e.preventDefault(); e.stopPropagation(); }
   }
 
   // ── 麦克风波形：随引擎发来的实时音量(level)起伏，暂停/无声时归于平静 ──
@@ -286,6 +296,11 @@
         const node = e.target && e.target.nodeType === 3 ? e.target.parentElement : e.target;
         if (node === inputEl) return;                                       // 点文字框本身：正常放光标
         if (node && node.closest && node.closest(".pause-btn")) return;     // 点暂停键(或其内部/文字)：不抢焦点,走它自己的切换
+        // 兜底:按【几何坐标】判是否点在 ⏸ 上(绕开层级/过渡/命中错位的一切歧义,你点中心也算)→ 不抢焦点进打字模式
+        if (pauseBtn) {
+          const r = pauseBtn.getBoundingClientRect();
+          if (r.width > 0 && e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return;
+        }
         e.preventDefault();                                                 // 点声波/空白：聚焦打字
         if (inputEl) inputEl.focus();
       });
@@ -369,6 +384,7 @@
     stopWave();
     if (rowEl) { rowEl.remove(); rowEl = null; }
     inputEl = null; pauseBtn = null; thumbsEl = null; pendingPasteImages = []; pasteLoading = 0;
+    reportSize();   // 输入框/缩略图都没了 → 报 0,窗口缩回固定高度
   }
 
   // 工具状态小字（不是对话气泡）：钉在窗口底部、靠对话气泡那侧对齐，
@@ -439,7 +455,15 @@
   let _captured = false;
   document.addEventListener("mousemove", (e) => {
     const t = document.elementFromPoint(e.clientX, e.clientY);
-    const over = !!(t && t.closest && t.closest(".msg, .input-row"));
+    let over = !!(t && t.closest && t.closest(".msg, .input-row"));
+    // 输入行存在时,用它的包围盒【外扩 16px】提前进入捕获 —— 否则你移到那个才 30px 的 ⏸ 上点下去时,
+    // 「检测 over → IPC 切 setIgnoreMouseEvents(false)」还没完成,点击就穿过去了(光标也还是箭头),时灵时不灵。
+    // 提前一截开捕获 → 留足 IPC 往返时间,碰到 ⏸ 时窗口已经可点。
+    if (!over && rowEl) {
+      const r = rowEl.getBoundingClientRect();
+      const M = 16;
+      if (e.clientX >= r.left - M && e.clientX <= r.right + M && e.clientY >= r.top - M && e.clientY <= r.bottom + M) over = true;
+    }
     if (over !== _captured) {
       _captured = over;
       if (window.chatStackAPI && window.chatStackAPI.setCapture) window.chatStackAPI.setCapture(over);

@@ -213,6 +213,57 @@
     return helpers.buildSection("Music", [selRow, customRow]);
   }
 
+  // ElevenLabs 音色切换：粘贴 API Key + Voice ID，点一下就切换桌宠的语音音色。
+  // 写到引擎的 /config（elevenApiKey / elevenVoiceId），引擎端负责实际用它合成语音。
+  function elevenSection() {
+    const inputStyle = "font:inherit;font-size:12.5px;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--panel-bg);color:var(--text-primary);width:230px;";
+
+    // API Key（可隐藏明文）。#7：不回填明文、也不强迫重填——.env / 已存 key 时用 placeholder 提示「留空即沿用」。
+    const keyInput = document.createElement("input");
+    keyInput.type = "password";
+    keyInput.placeholder = cfg.hasElevenKey ? "已配置 · 留空即沿用现有 key" : "sk_… (ElevenLabs API Key)";
+    keyInput.value = "";
+    keyInput.autocomplete = "off"; keyInput.spellcheck = false;
+    keyInput.style.cssText = inputStyle;
+
+    // #6：眼睛改用内联 SVG（不再用 emoji）；点击在「睁眼 / 闭眼」两个图标间切换。
+    const EYE_ON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const EYE_OFF = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+    const reveal = softBtn("", () => {
+      const showing = keyInput.type === "password";
+      keyInput.type = showing ? "text" : "password";
+      reveal.innerHTML = showing ? EYE_OFF : EYE_ON;
+    }, { title: "显示 / 隐藏密钥" });
+    reveal.innerHTML = EYE_ON;
+    reveal.style.minWidth = "34px";
+    reveal.style.display = "inline-flex"; reveal.style.alignItems = "center"; reveal.style.justifyContent = "center";
+
+    // Voice ID
+    const voiceInput = document.createElement("input");
+    voiceInput.type = "text";
+    voiceInput.placeholder = "Voice ID (如 21m00Tcm4TlvDq8ikWAM)";
+    voiceInput.value = cfg.elevenVoiceId || "";
+    voiceInput.autocomplete = "off"; voiceInput.spellcheck = false;
+    voiceInput.style.cssText = inputStyle;
+
+    // 切换音色按钮：保存 key + voiceId 到引擎，立即生效。
+    const applyBtn = softBtn("切换音色", async () => {
+      const apiKey = keyInput.value.trim();
+      const voiceId = voiceInput.value.trim();
+      if (!apiKey && !voiceId) { helpers.showToast("先粘贴 API Key 或 Voice ID", { error: true }); return; }
+      applyBtn.disabled = true; applyBtn.textContent = "切换中…";
+      const ok = await setConfig({ elevenApiKey: apiKey, elevenVoiceId: voiceId, voiceProvider: "eleven" });
+      applyBtn.disabled = false; applyBtn.textContent = "切换音色";
+      if (ok) helpers.showToast("音色已切换");
+    }, { accent: true });
+
+    return helpers.buildSection("ElevenLabs 音色", [
+      buttonRow("API Key", cfg.hasElevenKey ? "已从 .env / 已保存读取，无需重填；要换 key 才粘新的。" : "在 ElevenLabs 后台 → Profile 复制，只需填一次。", [keyInput, reveal]),
+      buttonRow("Voice ID", "ElevenLabs 语音库里每个音色的 ID，粘贴后点右边切换。", [voiceInput]),
+      buttonRow("", "粘贴后点一下立即切换桌宠语音音色。", [applyBtn]),
+    ]);
+  }
+
   function sessionsSection(sessions, current, rerender) {
     const rows = [];
     rows.push(buttonRow("Conversations", "Each session keeps its own context.", [
@@ -289,6 +340,7 @@
       mount.appendChild(voiceSection());
       mount.appendChild(wakeSection());
       mount.appendChild(musicSection());
+      mount.appendChild(elevenSection());
     }
   }
 
