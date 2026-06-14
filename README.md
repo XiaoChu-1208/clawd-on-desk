@@ -86,6 +86,7 @@ Thinking when you prompt, typing when tools run, grooving or juggling for subage
 - **Slash commands** — type `/say`, `/…` in the input; command turns render as black terminal-style bubbles so you can tell them apart from regular messages
 - **Copy bubble text** — click any bubble to copy its full text to the clipboard (shows a brief "Copied" confirmation); or drag-select to copy a partial excerpt
 - **Voice tab (Settings → Voice)** — configure the microphone, speaking volume, voice effect, talk-to-interrupt sensitivity, wake word ("Claude"), knock-to-wake, and model tier (Haiku / Sonnet / Opus) all in one place
+- **Switch TTS voice (Settings → Voice → ElevenLabs)** — paste an ElevenLabs Voice ID and click 切换音色 to instantly change the pet's speaking voice; it takes effect on the next reply and persists across restarts. The API key is read from your `.env` (or saved once), so day-to-day you only fill in the Voice ID — leave the API Key field blank to keep the existing key
 - **Chat tab (Settings → Chat)** — model selection and session management (list, rename, switch, create, delete) live in their own tab so Voice stays focused on audio controls
 
 ### Music-Reactive Pet
