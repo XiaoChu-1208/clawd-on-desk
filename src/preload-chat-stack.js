@@ -11,4 +11,5 @@ contextBridge.exposeInMainWorld("chatStackAPI", {
   setCapture: (on) => ipcRenderer.send("chat-capture", !!on), // 鼠标在可交互区上→捕获，否则点穿
   notifyTyping: (on) => ipcRenderer.send("chat-typing", !!on), // 进入打字模式→引擎停麦
   openLink: (href) => ipcRenderer.send("chat-open-link", href), // 点对话里的超链接→外部浏览器打开
+  copy: (text) => ipcRenderer.send("chat-copy", text),          // 复制气泡文字到系统剪贴板
 });

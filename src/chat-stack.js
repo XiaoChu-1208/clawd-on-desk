@@ -5,7 +5,7 @@
 //   payload.type: clear | add{role,text} | input{text?} | live{text} | endinput | hide
 //   deps.getPetWindowBounds() / getNearestWorkArea(cx,cy) / ipcMain
 
-const { BrowserWindow, ipcMain, shell } = require("electron");
+const { BrowserWindow, ipcMain, shell, clipboard } = require("electron");
 const path = require("path");
 const http = require("http");
 
@@ -181,6 +181,10 @@ module.exports = function initChatStack(deps = {}) {
   }
   ipc.on("chat-open-link", onOpenLink);
 
+  // 复制气泡文字到系统剪贴板
+  function onCopy(_e, text) { try { clipboard.writeText(String(text || "")); } catch {} }
+  ipc.on("chat-copy", onCopy);
+
   // 暂停按钮 → 打引擎 /toggle，把返回的 paused 回灌给前端驱动锁定视觉
   function onToggleMic() {
     const req = http.request(
@@ -227,6 +231,7 @@ module.exports = function initChatStack(deps = {}) {
     try { ipc.removeListener("chat-toggle-mic", onToggleMic); } catch {}
     try { ipc.removeListener("chat-capture", onCapture); } catch {}
     try { ipc.removeListener("chat-typing", onTyping); } catch {}
+    try { ipc.removeListener("chat-copy", onCopy); } catch {}
     if (win && !win.isDestroyed()) win.destroy();
     win = null;
   }

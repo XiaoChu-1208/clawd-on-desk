@@ -148,6 +148,16 @@
     } else if (t) {
       appendLinkified(el, t);                              // 打字/流式/命令：直接顶上去
     }
+    // 复制:单击气泡空白处 → 复制整条到剪贴板(有选中文字时不抢,让原生 Cmd+C 复制选区)。
+    el.addEventListener("click", (e) => {
+      if (e.target && e.target.closest && e.target.closest("a.lnk")) return;   // 点链接 → 打开,不复制
+      const sel = (window.getSelection && window.getSelection().toString()) || "";
+      if (sel.trim()) return;                                                   // 有选中 → 交给原生复制
+      const txt = (el.innerText || el.textContent || "").trim();
+      if (!txt || !(window.chatStackAPI && window.chatStackAPI.copy)) return;
+      window.chatStackAPI.copy(txt);
+      try { showStatus("已复制"); setTimeout(() => { try { hideStatus(); } catch (_) {} }, 1100); } catch (_) {}
+    });
     log.appendChild(el); cap();
     if (instant || !userScrolledUp) stickBottom();   // 新消息/恢复 → 贴最新；除非用户正翻历史
     // 带图的用户气泡:从底边基线"长出来"——底边不动、高度往上展开(因为整列贴底锚定)。
