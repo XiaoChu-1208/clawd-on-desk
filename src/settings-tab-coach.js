@@ -170,6 +170,43 @@
     return helpers.buildSection("Model", [row]);
   }
 
+  // 音乐联动:选监听哪个音乐 App（在放歌时桌宠跳律动，暂停→idle）。值是 pgrep -if 模式。
+  function musicSection() {
+    const PRESETS = [
+      { label: "关闭", pat: "" },
+      { label: "网易云音乐", pat: "neteasemusic" },
+      { label: "Apple Music", pat: "Music.app" },
+      { label: "QQ音乐", pat: "QQMusic" },
+      { label: "汽水音乐", pat: "SodaMusic" },
+      { label: "Spotify", pat: "Spotify" },
+    ];
+    const cur = cfg.musicApp || "";
+    const isPreset = PRESETS.some((p) => p.pat === cur);
+
+    const inputStyle = "font:inherit;font-size:12.5px;padding:5px 8px;border-radius:7px;border:1px solid var(--border);background:var(--panel-bg);color:var(--text-primary);";
+    const customInput = document.createElement("input");
+    customInput.type = "text"; customInput.placeholder = "进程名 (pgrep -if)"; customInput.value = isPreset ? "" : cur;
+    customInput.style.cssText = inputStyle + "width:180px;";
+    customInput.addEventListener("change", () => setConfig({ musicApp: customInput.value.trim() }));
+
+    const sel = document.createElement("select");
+    sel.style.cssText = inputStyle;
+    for (const p of PRESETS) { const o = document.createElement("option"); o.value = p.pat; o.textContent = p.label; sel.appendChild(o); }
+    const co = document.createElement("option"); co.value = "__custom__"; co.textContent = "自定义…"; sel.appendChild(co);
+    sel.value = isPreset ? cur : "__custom__";
+
+    const customRow = buttonRow("自定义进程名", "用 pgrep -if 匹配（如 neteasemusic）", [customInput]);
+    customRow.style.display = isPreset ? "none" : "flex";
+
+    sel.addEventListener("change", () => {
+      if (sel.value === "__custom__") { customRow.style.display = "flex"; customInput.focus(); }
+      else { customRow.style.display = "none"; setConfig({ musicApp: sel.value }); }
+    });
+
+    const selRow = buttonRow("Music reactions", "选中的 App 在放歌时，桌宠跳律动；暂停回 idle。准确判暂停需 nowplaying-cli。", [sel]);
+    return helpers.buildSection("Music", [selRow, customRow]);
+  }
+
   function sessionsSection(sessions, current, rerender) {
     const rows = [];
     rows.push(buttonRow("Conversations", "Each session keeps its own context.", [
@@ -239,6 +276,7 @@
     mount.appendChild(micSection(mics, curMic, rerender));
     mount.appendChild(voiceSection());
     mount.appendChild(wakeSection());
+    mount.appendChild(musicSection());
     mount.appendChild(modelSection());
     mount.appendChild(sessionsSection(sessions, current, rerender));
   }
