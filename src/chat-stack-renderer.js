@@ -249,8 +249,10 @@
       rowEl.className = "input-row";
       // 点输入框任意处（含左侧声波动画 / 空白）都聚焦输入框开始打字；只有点输入框本身/暂停键走各自默认
       rowEl.addEventListener("mousedown", (e) => {
-        if (e.target === inputEl) return;                                   // 点文字框本身：正常放光标
-        if (e.target.closest && e.target.closest(".pause-btn")) return;     // 点暂停键：正常切换
+        // 兼容:点到的是文字节点时取其父元素,否则 closest 会失效导致漏判暂停键 → 误进打字模式
+        const node = e.target && e.target.nodeType === 3 ? e.target.parentElement : e.target;
+        if (node === inputEl) return;                                       // 点文字框本身：正常放光标
+        if (node && node.closest && node.closest(".pause-btn")) return;     // 点暂停键(或其内部/文字)：不抢焦点,走它自己的切换
         e.preventDefault();                                                 // 点声波/空白：聚焦打字
         if (inputEl) inputEl.focus();
       });

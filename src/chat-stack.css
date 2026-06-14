@@ -200,9 +200,9 @@ body.pet-left  .input-row { align-self: flex-end;   border-radius: 15px 15px 0 1
 
 /* 内嵌暂停 / 继续按钮 */
 .pause-btn {
-  flex: 0 0 auto; width: 24px; height: 24px; padding: 0;
+  flex: 0 0 auto; width: 30px; height: 30px; padding: 0; margin-left: 2px;   /* 命中区放大 + 与输入框留点距,别点偏成打字模式 */
   border-radius: 50%; border: none; background: transparent;
-  color: #0a66ff; font-size: 11px; line-height: 1; cursor: pointer;
+  color: #0a66ff; font-size: 12px; line-height: 1; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   overflow: hidden;
   /* 展开方向（退出打字）：宽度先开 → opacity 后渐显 */
