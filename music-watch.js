@@ -61,10 +61,24 @@ function isMusicRunning() {
 
 function isAudioPlaying() {
   return new Promise((resolve) => {
-    // CoreAudio kAudioDevicePropertyDeviceIsRunningSomewhere：设备真有声音输出时=1。
-    // 对网易云实测准（放歌=1、暂停释放音频流=0）。作为主判据。
+    // CoreAudio kAudioDevicePropertyDeviceIsRunningSomewhere：设备被占用出声=1。
+    // 坑：网易云暂停常仍占着音频流 → 暂停也报 1（不可靠）。只在 now-playing 给不出答案时兜底。
     execFile("python3", [AUDIO_PROBE], { timeout: 1500 }, (err, stdout) => {
       resolve(!err && String(stdout).trim() === "1");
+    });
+  });
+}
+
+// 读系统「正在播放」状态的 playbackRate（媒体控制中心同款）：>0=播放→true、0=暂停→false、
+// 拿不到(未装/当前无 now-playing 源)=null。实测网易云对此字段准（播放=1、暂停=0）。
+function nowPlaying() {
+  return new Promise((resolve) => {
+    execFile("nowplaying-cli", ["get", "playbackRate"], { timeout: 1500 }, (err, stdout) => {
+      if (err) return resolve(null);
+      const v = String(stdout).trim();
+      if (v === "" || v === "null") return resolve(null);
+      const n = parseFloat(v);
+      resolve(Number.isFinite(n) ? n > 0 : null);
     });
   });
 }
@@ -73,9 +87,17 @@ let wasRunning = null;       // null = 尚未确定
 let lastAssert = 0;
 
 async function tick() {
-  // 听歌态 = 网易云在跑 且 设备真在出声（对网易云实测可靠：放歌→有声、暂停→无声）。
-  const [appOpen, audioOn] = await Promise.all([isMusicRunning(), isAudioPlaying()]);
-  const running = appOpen && audioOn;
+  // 听歌态 = 网易云在跑 且 真在播放。判据优先级:
+  //   playbackRate>0 → 在播；playbackRate=0 → 暂停(明确停,修复"暂停还在听歌")；
+  //   拿不到(没装 nowplaying-cli / 当前无 now-playing 源) → 退回设备出声检测。
+  const appOpen = await isMusicRunning();
+  let running = false;
+  if (appOpen) {
+    const np = await nowPlaying();
+    if (np === true) running = true;
+    else if (np === false) running = false;
+    else running = await isAudioPlaying();
+  }
   const now = Date.now();
   if (running) {
     if (wasRunning !== true) {
