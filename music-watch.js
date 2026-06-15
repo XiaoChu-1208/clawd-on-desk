@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// music-watch.js — 网易云音乐在运行时，让 clawd 桌宠进入「听歌」状态（juggling =
+// music-watch.js — 网易云音乐在运行时，让 clawd Claude Baby 进入「听歌」状态（juggling =
 // headphones-groove 摇摆动画）；退出时回到 idle。
 //
 // 完全解耦：只调用 clawd 现成的 POST /say 接口（端口取自 ~/.clawd/runtime.json，

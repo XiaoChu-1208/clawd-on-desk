@@ -33,7 +33,7 @@ contextBridge.exposeInMainWorld("hitAPI", {
   playClickReaction: (svg, duration) => ipcRenderer.send("play-click-reaction", svg, duration),
   // English-coach fork: 连点 4 次 → 开/关语音练习
   coachToggle: () => ipcRenderer.send("coach-toggle"),
-  // English-coach fork: 单击桌宠 → 戳引擎一下（它在说话就打断、轮到你说；否则引擎忽略）
+  // English-coach fork: 单击 Claude Baby → 戳引擎一下（它在说话就打断、轮到你说；否则引擎忽略）
   coachPoke: () => ipcRenderer.send("coach-poke"),
   // State sync ← main
   onStateSync: (cb) => ipcRenderer.on("hit-state-sync", (_, data) => cb(data)),

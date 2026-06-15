@@ -10,8 +10,8 @@
 #   bash test-oneshot-gate.sh all 10        # 全测，间隔 10s
 #
 # 测试场景:
-#   1) Animation Map 里把对应行开关关掉 → 跑脚本 → 桌宠应不出对应动画（gate 生效）
-#   2) 再把开关打开 → 跑脚本 → 桌宠应恢复播放对应动画（反向验证）
+#   1) Animation Map 里把对应行开关关掉 → 跑脚本 → Claude Baby 应不出对应动画（gate 生效）
+#   2) 再把开关打开 → 跑脚本 → Claude Baby 应恢复播放对应动画（反向验证）
 
 STATE=${1:-all}
 DELAY=${2:-6}

@@ -11,7 +11,7 @@
 
        Side note: torso底部边缘旋转时会与脚顶部出现 0.1-0.2px
        的极小错位 (max body-attend rotate ≈ 2.6deg around y=13
-       即脚顶部基线), 桌宠尺寸下肉眼不可见。
+       即脚顶部基线), Claude Baby 尺寸下肉眼不可见。
 
        v23 from v22 critique: "not cute / not精致".
        Five fixes layered on top of v22 timing:

@@ -43,7 +43,7 @@
       const { text, mode, side } = payload || {};
       // 每个新轮次（prompt = 轮到你说）从 opacity:0 重新淡入，避免复用窗口时不再渐显
       if (mode === "prompt") speech.classList.remove("show");
-      speech.classList.toggle("from-left", side === "left"); // 默认 = 桌宠在右
+      speech.classList.toggle("from-left", side === "left"); // 默认 = Claude Baby 在右
       speech.classList.toggle("prompt", mode === "prompt");   // 提示态：占位字
       // 内联兜底圆角（防陈旧缓存样式把方角圆掉）
       const R = "16px";

@@ -1,4 +1,4 @@
-// user-bubble.js — 你（用户）的对话气泡：贴在桌宠【下方】（与 coach 气泡反向），蓝字，
+// user-bubble.js — 你（用户）的对话气泡：贴在 Claude Baby 【下方】（与 coach 气泡反向），蓝字，
 // 实时更新（边说边长），带闪烁输入光标。不自动消失——由引擎显式 show/hide。
 //
 // initUserBubble(deps) → { showUserBubble({mode,text,side}), hideUserBubble(), cleanup }
@@ -35,7 +35,7 @@ module.exports = function initUserBubble(deps = {}) {
   let lastCardH = ESTIMATED_CARD_H;
   let followTimer = null, lastPetKey = "";
 
-  // 跟随桌宠移动：拖动时持续重新贴位
+  // 跟随 Claude Baby 移动：拖动时持续重新贴位
   function startFollow() {
     if (followTimer) return;
     followTimer = setInterval(() => {
@@ -60,14 +60,14 @@ module.exports = function initUserBubble(deps = {}) {
     // 窗口 = 卡片实测尺寸 + 四周 margin（卡片 width:max-content，随字增长/换行）
     const winW = Math.ceil(lastCardW) + 2 * CARD_MARGIN;
     const winH = Math.ceil(lastCardH) + 2 * CARD_MARGIN;
-    let x = Math.round(cx - winW / 2);              // 居中对齐桌宠，随字对称变宽
-    // 贴桌宠下方：卡片顶部挨着桌宠下半身（78%）→ 窗口顶 = 卡片顶 - margin
+    let x = Math.round(cx - winW / 2);              // 居中对齐 Claude Baby，随字对称变宽
+    // 贴 Claude Baby 下方：卡片顶部挨着 Claude Baby 下半身（78%）→ 窗口顶 = 卡片顶 - margin
     const petAnchorY = Math.round(pet.y + pet.height * 0.78);
     let y = petAnchorY + GAP_BELOW_PET - CARD_MARGIN;
 
     if (wa) {
       x = Math.max(wa.x, Math.min(x, wa.x + wa.width - winW));
-      // 下方放不下 → 翻到桌宠上方
+      // 下方放不下 → 翻到 Claude Baby 上方
       if (y + winH > wa.y + wa.height) {
         y = Math.round(pet.y + pet.height * 0.22) - winH - GAP_BELOW_PET + CARD_MARGIN;
       }

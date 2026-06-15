@@ -1,4 +1,4 @@
-// chat-stack.js — 桌宠头顶的聊天记录栏（最新贴桌宠、整列往上长）。
+// chat-stack.js — Claude Baby 头顶的聊天记录栏（最新贴 Claude Baby 、整列往上长）。
 // 可聚焦，让最下面那条 <input> 能真实打字；回车 → 经引擎控制口 /text 发出去。
 //
 // initChatStack(deps) → { chat(payload), clear(), cleanup }
@@ -29,7 +29,7 @@ module.exports = function initChatStack(deps = {}) {
   let userHidden = false;   // 用户双击隐藏对话面板（内容保留，更新照收但不弹窗）
   let composeExtra = 0;     // 合成(粘图)时窗口在固定高度上【向下】多长出来的高度(px)，由渲染端 reportSize 上报
 
-  // 跟随桌宠移动：桌宠被拖动时持续重新贴位（窗口固定大小，只在桌宠位置真的变了才 setBounds）
+  // 跟随 Claude Baby 移动：Claude Baby 被拖动时持续重新贴位（窗口固定大小，只在 Claude Baby 位置真的变了才 setBounds）
   function startFollow() {
     if (followTimer) return;
     followTimer = setInterval(() => {
@@ -68,7 +68,7 @@ module.exports = function initChatStack(deps = {}) {
     const width = W;
     const side = wa ? (cx >= wa.x + wa.width / 2 ? "right" : "left") : "right";
     let x = side === "right" ? Math.round(rect.right - width) : Math.round(rect.left);
-    let y = Math.round(rect.top) - baseH - GAP;  // 顶部按【基础高度】定位 → 输入气泡顶不动;composeExtra 全往下长(盖到桌宠头那块)
+    let y = Math.round(rect.top) - baseH - GAP;  // 顶部按【基础高度】定位 → 输入气泡顶不动;composeExtra 全往下长(盖到 Claude Baby 头那块)
     if (wa) {
       x = Math.max(wa.x, Math.min(x, wa.x + wa.width - width));
       y = Math.max(wa.y, y);
@@ -111,7 +111,7 @@ module.exports = function initChatStack(deps = {}) {
     } catch (_) {}
     win.webContents.once("did-finish-load", () => {
       ready = true;
-      pushSide();                       // 初始告知桌宠在哪侧
+      pushSide();                       // 初始告知 Claude Baby 在哪侧
       const q = queue; queue = [];
       for (const p of q) deliver(p);
     });
@@ -135,7 +135,7 @@ module.exports = function initChatStack(deps = {}) {
     const v = Math.max(0, Math.min(400, Math.round(Number(extra) || 0)));   // 封顶 400px 防失控
     if (v === composeExtra) return;                                        // 没变化就忽略(正常打字每字都报 0,别每字重算)
     composeExtra = v;
-    lastBoundsKey = "";                                                     // 高度变了 → 强制重设界(即使桌宠没动)
+    lastBoundsKey = "";                                                     // 高度变了 → 强制重设界(即使 Claude Baby 没动)
     anchor();
   }
   ipc.on("chat-stack-size", onSize);

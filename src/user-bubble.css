@@ -1,4 +1,4 @@
-/* user-bubble.css — 你（用户）的对话气泡：反向在桌宠下方，蓝字，带输入光标。
+/* user-bubble.css — 你（用户）的对话气泡：反向在 Claude Baby 下方，蓝字，带输入光标。
    独立于 coach-bubble；透明窗口，只画圆角卡片。 */
 html, body {
   margin: 0; padding: 0; background: transparent; overflow: hidden;
@@ -13,7 +13,7 @@ html, body {
   box-sizing: border-box;
   margin: 20px;                 /* = CARD_MARGIN，留给投影 */
   padding: 12px 15px;
-  /* 在桌宠下方 → 上方某角为方角，气泡像从桌宠那儿"垂"下来。默认从右上角。 */
+  /* 在 Claude Baby 下方 → 上方某角为方角，气泡像从 Claude Baby 那儿"垂"下来。默认从右上角。 */
   border-radius: 0 16px 16px 16px;
   background: rgba(248, 250, 255, 0.97);   /* 冷调浅底 */
   color: #0a66ff;                          /* 你的字：蓝色 */
@@ -25,7 +25,7 @@ html, body {
   transform: translateY(-4px);                 /* 去掉 scale 的“弹”感，只留极轻位移 */
   transition: opacity 520ms ease, transform 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
-/* 桌宠在左 → 左上角方角，从左上"垂"下 */
+/* Claude Baby 在左 → 左上角方角，从左上"垂"下 */
 .speech.from-left {
   border-radius: 16px 0 16px 16px;
   transform-origin: top left;

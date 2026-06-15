@@ -1560,14 +1560,14 @@ const _coachBubble = require("./coach-bubble")({
   ipcMain,
 });
 
-// ── User speech bubble (你的反向气泡：桌宠下方、蓝字、实时、带光标) ──
+// ── User speech bubble (你的反向气泡：Claude Baby 下方、蓝字、实时、带光标) ──
 const _userBubble = require("./user-bubble")({
   getPetWindowBounds: () => getPetWindowBounds(),
   getNearestWorkArea: (cx, cy) => getNearestWorkArea(cx, cy),
   ipcMain,
 });
 
-// ── Chat stack (聊天记录栏：桌宠头顶、Claude/你各一边、可真实打字) ──
+// ── Chat stack (聊天记录栏：Claude Baby 头顶、Claude/你各一边、可真实打字) ──
 const _chatStack = require("./chat-stack")({
   getPetWindowBounds: () => getPetWindowBounds(),
   getHitRectScreen: (bounds) => getHitRectScreen(bounds),
@@ -3189,7 +3189,7 @@ function createWindow() {
   // Event-level safety net for position sync
   const _syncCoachWindows = () => {
     petWindowRuntime.syncFloatingWindowsAfterPetBoundsChange();
-    // English-coach fork: 逐帧跟随桌宠（拖动/缩放时丝滑贴位）
+    // English-coach fork: 逐帧跟随 Claude Baby（拖动/缩放时丝滑贴位）
     try { _coachBubble.reanchor(); } catch {}
     try { _userBubble.reanchor(); } catch {}
     try { _chatStack.reanchor(); } catch {}

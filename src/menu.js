@@ -84,7 +84,7 @@ module.exports = function initMenu(ctx) {
   }
 
   // English-coach fork: 音量(右键菜单第一项)。原生菜单不支持拖动滑块,用离散档(单选打勾)。
-  // 选中 → POST /volume 给引擎,引擎用 afplay -v 控制桌宠说话音量。
+  // 选中 → POST /volume 给引擎,引擎用 afplay -v 控制 Claude Baby 说话音量。
   let coachVolume = 1.0;
   const COACH_VOLUME_LEVELS = [
     { v: 0 },     // 静音（标签本地化）
@@ -310,6 +310,17 @@ module.exports = function initMenu(ctx) {
 
   function requestAppQuit() {
     ctx.isQuitting = true;
+    // Claude-Baby/coach mode: right-click「退出」should behave exactly like `hello stop` —
+    // tell the brain (coach-engine) to say goodbye and shut its voice engine down first,
+    // then quit the pet. coachPost always invokes its callback (success/error/timeout),
+    // and if the brain isn't running we just quit ourselves.
+    if (COACH) {
+      let done = false;
+      const finish = () => { if (done) return; done = true; app.quit(); };
+      try { coachPost("/quit", null, finish); } catch (_) { finish(); }
+      setTimeout(finish, 3000);   // safety net: never leave the pet hanging if the callback never fires
+      return;
+    }
     app.quit();
   }
 

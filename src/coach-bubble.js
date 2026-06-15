@@ -208,7 +208,7 @@ module.exports = function initCoachBubble(deps = {}) {
     reposition();
   }
 
-  // 跟随桌宠移动：拖动时持续重新贴位（仅当有气泡且桌宠位置真的变了）
+  // 跟随 Claude Baby 移动：拖动时持续重新贴位（仅当有气泡且 Claude Baby 位置真的变了）
   let lastPetKey = "";
   const followTimer = setInterval(() => {
     if (!stack.length || typeof getPetWindowBounds !== "function") return;

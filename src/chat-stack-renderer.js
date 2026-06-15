@@ -1,4 +1,4 @@
-// chat-stack-renderer.js — 桌宠头顶聊天栏。coach=暖色靠左，user=蓝色靠右。
+// chat-stack-renderer.js — Claude Baby 头顶聊天栏。coach=暖色靠左，user=蓝色靠右。
 // 最新在底部，旧的往上挤（最多 6 条）。当前轮你那条是真实 <input>，能打字也能被语音填。
 (function () {
   const log = document.getElementById("log");
@@ -39,7 +39,7 @@
   let hintEl = null;              // "Claude is listening" 提示
   let persistentCoach = null;     // 最新那条 Claude 回答（常驻、不渐隐）
 
-  document.body.classList.add("pet-right"); // 默认桌宠在右；onSide 会纠正
+  document.body.classList.add("pet-right"); // 默认 Claude Baby 在右；onSide 会纠正
 
   function scheduleFade(el) {
     if (!el || el._fadeTimer) return;

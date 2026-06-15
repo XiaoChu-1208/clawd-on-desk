@@ -1,9 +1,9 @@
-// preload-chat-stack.js — 桌宠头顶聊天栏的 context bridge。
+// preload-chat-stack.js — Claude Baby 头顶聊天栏的 context bridge。
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("chatStackAPI", {
   onMsg: (cb) => ipcRenderer.on("chat-msg", (_e, payload) => cb(payload)),
-  onSide: (cb) => ipcRenderer.on("chat-side", (_e, side) => cb(side)), // 桌宠在左/右屏
+  onSide: (cb) => ipcRenderer.on("chat-side", (_e, side) => cb(side)), // Claude Baby 在左/右屏
   reportSize: (size) => ipcRenderer.send("chat-stack-size", size),
   submit: (text, images) => ipcRenderer.invoke("chat-submit", { text, images }), // 回车发送（打字 + 可选粘贴图片,可多张）；返回 {accepted} 决定是否清空输入
   toggleMic: () => ipcRenderer.send("chat-toggle-mic"),     // 暂停按钮 → 开/关录音

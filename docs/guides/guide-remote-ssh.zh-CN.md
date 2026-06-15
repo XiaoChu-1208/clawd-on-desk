@@ -50,7 +50,7 @@ Clawd HTTP 服务，不是远端集群的 IP。远端 hook 也不直接访问你
   -> POST http://127.0.0.1:<远端转发端口>
   -> SSH 反向隧道
   -> 本机 Clawd http://127.0.0.1:<本地运行端口>
-  -> Dashboard / Session HUD / 桌宠状态
+  -> Dashboard / Session HUD / Claude Baby 状态
 ```
 
 所以“已连接”只说明隧道通了。远端 session 要出现在 Dashboard 里，还必须满足：

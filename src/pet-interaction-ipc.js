@@ -149,7 +149,7 @@ function registerPetInteractionIpc(options = {}) {
     });
   });
 
-  // English-coach fork: 单击桌宠 → /poke。引擎只在「正说话」时打断并把回合交给你；
+  // English-coach fork: 单击 Claude Baby → /poke。引擎只在「正说话」时打断并把回合交给你；
   // 没说话/引擎没开 → 静默忽略（不自动拉引擎，单击不该把它叫醒）。
   on("coach-poke", () => {
     postEngine("/poke", () => {});

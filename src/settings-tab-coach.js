@@ -176,7 +176,7 @@
     return helpers.buildSection("Model", [row]);
   }
 
-  // 音乐联动:选监听哪个音乐 App（在放歌时桌宠跳律动，暂停→idle）。值是 pgrep -if 模式。
+  // 音乐联动:选监听哪个音乐 App（在放歌时 Claude Baby 跳律动，暂停→idle）。值是 pgrep -if 模式。
   function musicSection() {
     const PRESETS = [
       { label: "关闭", pat: "" },
@@ -209,11 +209,11 @@
       else { customRow.style.display = "none"; setConfig({ musicApp: sel.value }); }
     });
 
-    const selRow = buttonRow("Music reactions", "选中的 App 在放歌时，桌宠跳律动；暂停回 idle。准确判暂停需 nowplaying-cli。", [sel]);
+    const selRow = buttonRow("Music reactions", "选中的 App 在放歌时，Claude Baby 跳律动；暂停回 idle。准确判暂停需 nowplaying-cli。", [sel]);
     return helpers.buildSection("Music", [selRow, customRow]);
   }
 
-  // ElevenLabs 音色切换：粘贴 API Key + Voice ID，点一下就切换桌宠的语音音色。
+  // ElevenLabs 音色切换：粘贴 API Key + Voice ID，点一下就切换 Claude Baby 的语音音色。
   // 写到引擎的 /config（elevenApiKey / elevenVoiceId），引擎端负责实际用它合成语音。
   function elevenSection() {
     const inputStyle = "font:inherit;font-size:12.5px;padding:6px 9px;border-radius:7px;border:1px solid var(--border);background:var(--panel-bg);color:var(--text-primary);width:230px;";
@@ -260,7 +260,7 @@
     return helpers.buildSection("ElevenLabs 音色", [
       buttonRow("API Key", cfg.hasElevenKey ? "已从 .env / 已保存读取，无需重填；要换 key 才粘新的。" : "在 ElevenLabs 后台 → Profile 复制，只需填一次。", [keyInput, reveal]),
       buttonRow("Voice ID", "ElevenLabs 语音库里每个音色的 ID，粘贴后点右边切换。", [voiceInput]),
-      buttonRow("", "粘贴后点一下立即切换桌宠语音音色。", [applyBtn]),
+      buttonRow("", "粘贴后点一下立即切换 Claude Baby 语音音色。", [applyBtn]),
     ]);
   }
 

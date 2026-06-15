@@ -1,7 +1,7 @@
 <p align="center">
   <img src="assets/tray-icon.png" width="128" alt="Clawd">
 </p>
-<h1 align="center">Clawd 桌宠</h1>
+<h1 align="center">Clawd Claude Baby</h1>
 <p align="center">
   <a href="README.md">English</a>
   ·
@@ -21,7 +21,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/hero.gif" alt="Clawd 桌宠动画演示：像素螃蟹会随 AI 编程助手状态实时切换，在睡觉、思考、工具运行时打字、单个子代理时戴耳机律动、多个子代理并行时三球杂耍、权限请求弹出时提醒、任务完成后庆祝。支持 Claude Code、Codex、Cursor、Copilot、Gemini、Antigravity、Qwen、CodeWhale、Pi、OpenClaw 等。">
+  <img src="assets/hero.gif" alt="Clawd Claude Baby 动画演示：像素螃蟹会随 AI 编程助手状态实时切换，在睡觉、思考、工具运行时打字、单个子代理时戴耳机律动、多个子代理并行时三球杂耍、权限请求弹出时提醒、任务完成后庆祝。支持 Claude Code、Codex、Cursor、Copilot、Gemini、Antigravity、Qwen、CodeWhale、Pi、OpenClaw 等。">
 </p>
 
 Clawd 住在你的桌面上，实时感知 AI 编程助手正在做什么。发起一个长任务，起身去做点别的，等螃蟹告诉你任务完成了再回来。
@@ -78,16 +78,16 @@ Clawd 住在你的桌面上，实时感知 AI 编程助手正在做什么。发�
 - **启动恢复** — 如果 Clawd 重启时仍有受支持的 Agent 在运行，它会保持清醒等待后续事件，而不是直接睡觉
 
 ### 聊天面板（Coach 模式）
-- **浮动对话窗口** — 多气泡堆叠式聊天窗口浮在桌宠上方，你的消息显示为用户气泡，Clawd 的回复显示为 coach 气泡
+- **浮动对话窗口** — 多气泡堆叠式聊天窗口浮在 Claude Baby 上方，你的消息显示为用户气泡，Clawd 的回复显示为 coach 气泡
 - **粘贴图片** — 在输入框粘贴剪贴板图片，发送前会显示预览小片，图片发出后在气泡内渲染为缩略图
 - **斜杠命令** — 输入 `/say`、`/…` 等命令时，渲染为黑色终端风格气泡，与普通对话气泡区分清楚
 - **点击气泡复制** — 点击任意气泡即可复制全文到剪贴板（短暂显示"已复制"提示）；也可以拖选后 Cmd+C 复制片段
 - **设置 → Voice（语音设置）** — 一个标签页统一管理麦克风、说话音量、语音效果、说话打断灵敏度、唤醒词（"Claude"）、敲击唤醒，以及模型档位（Haiku / Sonnet / Opus）
-- **切换发声音色（设置 → Voice → ElevenLabs 音色）** — 粘贴一个 ElevenLabs Voice ID 点「切换音色」即可即时更换桌宠说话的音色，下一句生效、重启后保留。API Key 从 `.env` 读取（或填一次保存），平时只需填 Voice ID —— API Key 那栏留空即沿用现有 key
+- **切换发声音色（设置 → Voice → ElevenLabs 音色）** — 粘贴一个 ElevenLabs Voice ID 点「切换音色」即可即时更换 Claude Baby 说话的音色，下一句生效、重启后保留。API Key 从 `.env` 读取（或填一次保存），平时只需填 Voice ID —— API Key 那栏留空即沿用现有 key
 - **设置 → Chat（对话设置）** — 模型选择和会话管理（列表、重命名、切换、新建、删除）独立成标签页，Voice 标签保持专注于音频控制
 
-### 音乐响应桌宠
-- **随音乐律动** — 当你配置的音乐 App 正在运行且系统确实有音频输出时，桌宠自动进入律动动画；暂停或停止后回到待机状态
+### 音乐响应 Claude Baby
+- **随音乐律动** — 当你配置的音乐 App 正在运行且系统确实有音频输出时，Claude Baby 自动进入律动动画；暂停或停止后回到待机状态
 - **自由选择音乐 App** — 在 `设置…` → `Voice` → 音乐应用中选择：关闭 / 网易云音乐 / Apple Music / QQ 音乐 / 汽水音乐 / Spotify，或者输入自定义进程名
 - **零耦合设计** — `music-watch.js` 是一个独立的可选助手脚本，探测系统音频输出后向 Clawd 的 `/say` HTTP 接口推送状态，核心动画管线不受影响
 

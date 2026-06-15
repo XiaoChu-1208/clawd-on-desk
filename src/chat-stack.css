@@ -1,4 +1,4 @@
-/* chat-stack.css — 桌宠头顶的聊天记录栏：最新贴桌宠、旧的往上挤。
+/* chat-stack.css — Claude Baby 头顶的聊天记录栏：最新贴 Claude Baby 、旧的往上挤。
    coach（Claude）= 暖色靠左；user（你）= 蓝色靠右。透明窗口。 */
 html, body {
   margin: 0; padding: 0; background: transparent; overflow: hidden;
@@ -13,7 +13,7 @@ html, body {
   padding: 14px 14px 12px;
   box-sizing: border-box;
   overflow-y: auto; overflow-x: hidden;        /* 滚轮上滚 → 翻看历史（最新贴底，不会过滚到屏幕下方） */
-  scrollbar-width: none;                        /* 隐藏滚动条（透明桌宠美学） */
+  scrollbar-width: none;                        /* 隐藏滚动条（透明 Claude Baby 美学） */
   /* 上下透明渐变蒙版：上滚的老对话在顶部渐隐被吃掉；底部留一点透明承接，不硬切到屏幕边 */
   -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 97%, transparent 100%);
           mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 97%, transparent 100%);
@@ -53,8 +53,8 @@ body.pet-left  .status-line { left: 16px;  text-align: left; }
 }
 @keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
-/* 左右随桌宠所在屏侧镜像：Claude 贴桌宠那侧，你在反侧；靠桌宠那个底角是直角(0)。
-   默认 body.pet-right（桌宠在右）：Claude 靠右·直角右下；你靠左·直角左下。
+/* 左右随 Claude Baby 所在屏侧镜像：Claude 贴 Claude Baby 那侧，你在反侧；靠 Claude Baby 那个底角是直角(0)。
+   默认 body.pet-right（Claude Baby 在右）：Claude 靠右·直角右下；你靠左·直角左下。
    body.pet-left 整套镜像。 */
 .msg.coach {
   background: rgba(255, 255, 255, 0.98);
@@ -127,11 +127,11 @@ body.pet-left  .status-line { left: 16px;  text-align: left; }
 @keyframes thumb-sweep { 0% { left: -60%; } 100% { left: 115%; } }
 @keyframes thumb-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
 
-/* —— 桌宠在右（默认）—— */
+/* —— Claude Baby 在右（默认）—— */
 body.pet-right .msg.coach { align-self: flex-end;   border-radius: 15px 15px 0 15px; } /* 直角右下 */
 body.pet-right .msg.user  { align-self: flex-start; border-radius: 15px 15px 15px 0; } /* 直角左下 */
 
-/* —— 桌宠在左（镜像）—— */
+/* —— Claude Baby 在左（镜像）—— */
 body.pet-left  .msg.coach { align-self: flex-start; border-radius: 15px 15px 15px 0; } /* 直角左下 */
 body.pet-left  .msg.user  { align-self: flex-end;   border-radius: 15px 15px 0 15px; } /* 直角右下 */
 
